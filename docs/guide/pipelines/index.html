@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steps and pipelines</title>
+    <meta name="description" content="Different commands, in order or side by side">
+    <link rel="stylesheet" href="/shard/style.css">
+    <script>
+    /* Runs before the first paint, so a reader who chose a scheme never
+       sees the other one flash first. */
+    (function () {
+        var t = localStorage.getItem('theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/shard/">shard</a>
+        <span class="version">0.1.0</span>
+        <button class="theme-toggle" type="button"
+                aria-label="Switch between light and dark">
+            <span class="in-light">Dark</span>
+            <span class="in-dark">Light</span>
+        </button>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <ul><li><a href="/shard/introduction/">Introduction</a></li><li><a href="/shard/installation/">Installation</a></li><li><a href="/shard/quick-start/">Quick start</a></li><li><a href="/shard/guide/">Guide</a><ul><li><a href="/shard/guide/cluster-file/">The cluster file</a></li><li><a href="/shard/guide/shipping-code/">Shipping your code</a></li><li><a href="/shard/guide/running-commands/">Running commands</a></li><li><a href="/shard/guide/sharing-work/">Sharing work out</a></li><li><a href="/shard/guide/many-runs/">Running one thing many times</a></li><li><a href="/shard/guide/pipelines/">Steps and pipelines</a></li><li><a href="/shard/guide/tasks-file/">Named jobs</a></li><li><a href="/shard/guide/queue/">Queueing jobs</a></li><li><a href="/shard/guide/logs-and-history/">Logs and history</a></li><li><a href="/shard/guide/web-dashboard/">The web dashboard</a></li><li><a href="/shard/guide/terminal-dashboard/">The terminal dashboard</a></li></ul></li><li><a href="/shard/examples/">Example workloads</a></li><li><a href="/shard/reference/">Reference</a><ul><li><a href="/shard/reference/commands/">Commands</a></li><li><a href="/shard/reference/cluster-toml/">cluster.toml</a></li><li><a href="/shard/reference/tasks-toml/">tasks.toml</a></li><li><a href="/shard/reference/files/">Files and exit codes</a></li></ul></li><li><a href="/shard/troubleshooting/">Troubleshooting</a></li><li><a href="/shard/whats-next/">What is not here yet</a></li></ul>
+            <footer class="site-footer"><a href="https://github.com/yavuzselimsahin/atomik-ssg">Generated with atomik-ssg</a></footer>
+        </aside>
+        <main>
+            <article>
+                <h1>Steps and pipelines</h1>
+                <p><code>exec</code> runs one command; <code>map</code> runs one command many times. Sometimes the work
+is several <em>different</em> commands, and what matters is where each one runs and
+in what order.</p>
+<h2>Steps in order</h2>
+<pre><code class="language-bash">shard pipeline \
+  --step &quot;./download.sh&quot;  --on cloud \
+  --step &quot;./process.sh&quot;   --on fast \
+  --step &quot;./upload.sh&quot;    --on cloud
+</code></pre>
+<p>Each step runs on a machine matching its <code>--on</code>, and the next step starts only
+after the previous one succeeded:</p>
+<pre><code>pipeline: 3 steps, in order
+[ec2-worker·1]  ./download.sh    ✓ completed (41.20s)
+[laptop·2]      ./process.sh     ✓ completed (3m 12s)
+[ec2-worker·3]  ./upload.sh      ✓ completed (52.90s)
+
+3/3 completed in 4m 46s
+</code></pre>
+<h2>When a step fails</h2>
+<p>The pipeline stops. The steps after it are marked as not run rather than
+started, because they were written expecting the earlier one to have worked:</p>
+<pre><code>[laptop·1]      ./build.sh       ✓ completed (2m 01s)
+[laptop·2]      ./test.sh        ✗ failed (exit 1) (48.10s)
+[ec2-worker·3]  ./deploy.sh      – skipped (0.00s)
+
+1/3 succeeded in 2m 49s, 1 failed, 1 not run
+</code></pre>
+<p><code>shard pipeline</code> exits with status 1, so a script wrapping it stops too.</p>
+<h2>Carrying files to the next step</h2>
+<p>A step can name the files it leaves behind. They are collected when the step
+succeeds and put on the machine the next steps run on, before they start:</p>
+<pre><code class="language-bash">shard pipeline \
+  --step &quot;make release&quot; --on fast  --produces &quot;dist/app.tar.gz&quot; \
+  --step &quot;./deploy.sh dist/app.tar.gz&quot; --on cloud
+</code></pre>
+<pre><code>pipeline: 2 steps, in order
+[laptop·1]      make release      ✓ completed (2m 01s)
+  ↑ dist/app.tar.gz from laptop (14.2 MB)
+  ↓ dist/app.tar.gz onto ec2-worker
+[ec2-worker·2]  ./deploy.sh …     ✓ completed (38.40s)
+</code></pre>
+<p>Repeat <code>--produces</code> for more than one file. Directories work too — the whole
+tree travels.</p>
+<p><strong>Where files land.</strong> Paths are relative to where the step ran: the machine's
+<code>workdir</code> if it has one, the login directory otherwise. A file collected from
+<code>dist/app.tar.gz</code> on one machine is unpacked as <code>dist/app.tar.gz</code> on the next.</p>
+<p><strong>How they travel.</strong> Through this machine, in two hops: shard packs them into
+a tar, pulls that back over the same SSH connection it already uses, and
+unpacks it on the far side. Nothing has to be installed, and the two machines
+never need to reach each other — which is the normal case for a laptop at home
+and a VM in a data centre.</p>
+<blockquote class="callout callout-note">
+<p>A step that names a file it did not produce stops the pipeline, rather than
+letting the next step run without it. The steps after it are marked as not
+run, exactly as if the step itself had failed.</p>
+</blockquote>
+<p>Big artifacts cross the network twice, so for hundreds of megabytes between
+two cloud machines an <code>scp</code> written into the step itself will be faster. For
+build output and reports, which is what most pipelines carry, two hops is
+fine.</p>
+<h2>Steps side by side</h2>
+<p>With <code>--parallel</code>, the steps start at the same time instead:</p>
+<pre><code class="language-bash">shard pipeline --parallel \
+  --step &quot;make TARGET=linux&quot;   --on cpu \
+  --step &quot;make TARGET=macos&quot;   --on laptop \
+  --step &quot;make TARGET=windows&quot; --on cpu
+</code></pre>
+<p>Use it when the steps are independent — three builds of the same project, say.
+Nothing waits for anything, and one failure does not stop the others. Files
+are not carried between steps that run at the same time: there is no &quot;next
+step&quot; to carry them to.</p>
+<h2>Which machine a step lands on</h2>
+<p><code>--on</code> names a group; the step runs on one machine from it. shard picks the
+machine in that group that has taken the fewest steps so far, so three steps
+tagged <code>cpu</code> spread over your cpu machines instead of piling onto the first
+one.</p>
+<p>To pin a step to a specific machine, name it: <code>--on laptop</code>.</p>
+<h2>Naming steps</h2>
+<p>Steps are numbered in the output. <code>--name</code> gives one a word instead, which
+makes the log easier to read afterwards:</p>
+<pre><code class="language-bash">shard pipeline \
+  --step &quot;./download.sh&quot; --name fetch   --on cloud \
+  --step &quot;./process.sh&quot;  --name process --on fast
+</code></pre>
+<pre><code>[ec2-worker·fetch]  …
+[laptop·process]    …
+</code></pre>
+<h2>Writing it down</h2>
+<p>A pipeline you run often does not want retyping. Put it in <code>tasks.toml</code> and it
+becomes <code>shard run release</code> — see <a href="/shard/guide/tasks-file/">Named jobs</a>.</p>
+
+            </article>
+            <nav class="post-nav">
+                <a class="prev" href="/shard/guide/many-runs/">Running one thing many times</a>
+                <a class="next" href="/shard/guide/tasks-file/">Named jobs</a>
+            </nav>
+            <a class="edit" href="">Edit this page</a>
+        </main>
+    </div>
+    <script>
+    (function () {
+        var here = location.pathname;
+        document.querySelectorAll('.sidebar > ul a').forEach(function (a) {
+            if (a.getAttribute('href') === here) a.classList.add('active');
+        });
+
+        var root = document.documentElement;
+        var button = document.querySelector('.theme-toggle');
+        if (button) button.addEventListener('click', function () {
+            /* No stored choice yet means we are following the system. */
+            var now = root.getAttribute('data-theme') ||
+                (matchMedia('(prefers-color-scheme: dark)').matches
+                    ? 'dark' : 'light');
+            var next = now === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    })();
+    </script>
+</body>
+</html>

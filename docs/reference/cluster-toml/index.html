@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>cluster.toml</title>
+    <meta name="description" content="Every configuration key">
+    <link rel="stylesheet" href="/shard/style.css">
+    <script>
+    /* Runs before the first paint, so a reader who chose a scheme never
+       sees the other one flash first. */
+    (function () {
+        var t = localStorage.getItem('theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/shard/">shard</a>
+        <span class="version">0.1.0</span>
+        <button class="theme-toggle" type="button"
+                aria-label="Switch between light and dark">
+            <span class="in-light">Dark</span>
+            <span class="in-dark">Light</span>
+        </button>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <ul><li><a href="/shard/introduction/">Introduction</a></li><li><a href="/shard/installation/">Installation</a></li><li><a href="/shard/quick-start/">Quick start</a></li><li><a href="/shard/guide/">Guide</a><ul><li><a href="/shard/guide/cluster-file/">The cluster file</a></li><li><a href="/shard/guide/shipping-code/">Shipping your code</a></li><li><a href="/shard/guide/running-commands/">Running commands</a></li><li><a href="/shard/guide/sharing-work/">Sharing work out</a></li><li><a href="/shard/guide/many-runs/">Running one thing many times</a></li><li><a href="/shard/guide/pipelines/">Steps and pipelines</a></li><li><a href="/shard/guide/tasks-file/">Named jobs</a></li><li><a href="/shard/guide/queue/">Queueing jobs</a></li><li><a href="/shard/guide/logs-and-history/">Logs and history</a></li><li><a href="/shard/guide/web-dashboard/">The web dashboard</a></li><li><a href="/shard/guide/terminal-dashboard/">The terminal dashboard</a></li></ul></li><li><a href="/shard/examples/">Example workloads</a></li><li><a href="/shard/reference/">Reference</a><ul><li><a href="/shard/reference/commands/">Commands</a></li><li><a href="/shard/reference/cluster-toml/">cluster.toml</a></li><li><a href="/shard/reference/tasks-toml/">tasks.toml</a></li><li><a href="/shard/reference/files/">Files and exit codes</a></li></ul></li><li><a href="/shard/troubleshooting/">Troubleshooting</a></li><li><a href="/shard/whats-next/">What is not here yet</a></li></ul>
+            <footer class="site-footer"><a href="https://github.com/yavuzselimsahin/atomik-ssg">Generated with atomik-ssg</a></footer>
+        </aside>
+        <main>
+            <article>
+                <h1>cluster.toml</h1>
+                <p>The file has one <code>[cluster]</code> block and one <code>[[nodes]]</code> block per machine. The
+double brackets matter: they are how TOML writes a list.</p>
+<h2>[cluster]</h2>
+<table>
+  <tr><th>Key</th><th>Default</th><th>Meaning</th></tr>
+  <tr><td><code>name</code></td><td>the machine's hostname</td>
+      <td>What this cluster is called. Shown in listings and the dashboard.</td></tr>
+  <tr><td><code>log_dir</code></td><td><code>~/.shard/logs</code></td>
+      <td>Where run output is kept. <code>~</code> is expanded.</td></tr>
+</table>
+<h2>[[nodes]]</h2>
+<table>
+  <tr><th>Key</th><th>Default</th><th>Meaning</th></tr>
+  <tr><td><code>name</code></td><td>the host</td>
+      <td>What you type to select this machine.</td></tr>
+  <tr><td><code>host</code></td><td>the name</td>
+      <td>Address or hostname. <code>localhost</code> runs without SSH.</td></tr>
+  <tr><td><code>user</code></td><td>your username</td>
+      <td>SSH user.</td></tr>
+  <tr><td><code>key</code></td><td>your default key</td>
+      <td>SSH identity file. <code>~</code> is expanded.</td></tr>
+  <tr><td><code>port</code></td><td>22</td><td>SSH port.</td></tr>
+  <tr><td><code>tags</code></td><td>none</td>
+      <td>List of labels, for selecting groups: <code>tags = ["cloud", "gpu"]</code>.</td></tr>
+  <tr><td><code>cpu</code></td><td>1</td>
+      <td>Cores. Decides this machine's share when work is distributed.</td></tr>
+  <tr><td><code>ram_gb</code></td><td>none</td>
+      <td>Memory, for your own reference. Shown in listings.</td></tr>
+  <tr><td><code>workdir</code></td><td>the login directory</td>
+      <td>Directory to change into before running anything.</td></tr>
+  <tr><td><code>local</code></td><td>false</td>
+      <td><code>true</code> runs commands here, without SSH. Implied by <code>localhost</code>.</td></tr>
+</table>
+<h2>A file using all of it</h2>
+<pre><code class="language-toml">[cluster]
+name    = &quot;home-lab&quot;
+log_dir = &quot;~/.shard/logs&quot;
+
+[[nodes]]
+name    = &quot;laptop&quot;
+host    = &quot;localhost&quot;
+tags    = [&quot;local&quot;, &quot;fast&quot;]
+cpu     = 8
+ram_gb  = 16
+
+[[nodes]]
+name    = &quot;build-box&quot;
+host    = &quot;192.168.1.15&quot;
+user    = &quot;yavuz&quot;
+port    = 2222
+workdir = &quot;/srv/build&quot;
+tags    = [&quot;cpu&quot;, &quot;build&quot;]
+cpu     = 4
+ram_gb  = 8
+
+[[nodes]]
+name   = &quot;ec2-worker&quot;
+host   = &quot;ec2-13-58-0-1.compute.amazonaws.com&quot;
+user   = &quot;ubuntu&quot;
+key    = &quot;~/.ssh/aws-key.pem&quot;
+tags   = [&quot;cloud&quot;, &quot;cpu&quot;]
+cpu    = 4
+ram_gb = 8
+</code></pre>
+<h2>What is understood</h2>
+<p>The reader covers the parts of TOML this file needs: comments, <code>[table]</code> and
+<code>[[array of tables]]</code> headers, strings, whole numbers, <code>true</code>/<code>false</code>, and
+lists of strings. Nested tables, dates and floating point numbers are not
+used, and a key it does not recognise is ignored rather than refused — so a
+note to yourself in the file does no harm.</p>
+<p>A syntax error stops the command and names the line, rather than half-running
+on a misread cluster.</p>
+
+            </article>
+            <nav class="post-nav">
+                <a class="prev" href="/shard/reference/commands/">Commands</a>
+                <a class="next" href="/shard/reference/tasks-toml/">tasks.toml</a>
+            </nav>
+            <a class="edit" href="">Edit this page</a>
+        </main>
+    </div>
+    <script>
+    (function () {
+        var here = location.pathname;
+        document.querySelectorAll('.sidebar > ul a').forEach(function (a) {
+            if (a.getAttribute('href') === here) a.classList.add('active');
+        });
+
+        var root = document.documentElement;
+        var button = document.querySelector('.theme-toggle');
+        if (button) button.addEventListener('click', function () {
+            /* No stored choice yet means we are following the system. */
+            var now = root.getAttribute('data-theme') ||
+                (matchMedia('(prefers-color-scheme: dark)').matches
+                    ? 'dark' : 'light');
+            var next = now === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Named jobs</title>
+    <meta name="description" content="tasks.toml, so you type the name instead of the command">
+    <link rel="stylesheet" href="/shard/style.css">
+    <script>
+    /* Runs before the first paint, so a reader who chose a scheme never
+       sees the other one flash first. */
+    (function () {
+        var t = localStorage.getItem('theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/shard/">shard</a>
+        <span class="version">0.1.0</span>
+        <button class="theme-toggle" type="button"
+                aria-label="Switch between light and dark">
+            <span class="in-light">Dark</span>
+            <span class="in-dark">Light</span>
+        </button>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <ul><li><a href="/shard/introduction/">Introduction</a></li><li><a href="/shard/installation/">Installation</a></li><li><a href="/shard/quick-start/">Quick start</a></li><li><a href="/shard/guide/">Guide</a><ul><li><a href="/shard/guide/cluster-file/">The cluster file</a></li><li><a href="/shard/guide/shipping-code/">Shipping your code</a></li><li><a href="/shard/guide/running-commands/">Running commands</a></li><li><a href="/shard/guide/sharing-work/">Sharing work out</a></li><li><a href="/shard/guide/many-runs/">Running one thing many times</a></li><li><a href="/shard/guide/pipelines/">Steps and pipelines</a></li><li><a href="/shard/guide/tasks-file/">Named jobs</a></li><li><a href="/shard/guide/queue/">Queueing jobs</a></li><li><a href="/shard/guide/logs-and-history/">Logs and history</a></li><li><a href="/shard/guide/web-dashboard/">The web dashboard</a></li><li><a href="/shard/guide/terminal-dashboard/">The terminal dashboard</a></li></ul></li><li><a href="/shard/examples/">Example workloads</a></li><li><a href="/shard/reference/">Reference</a><ul><li><a href="/shard/reference/commands/">Commands</a></li><li><a href="/shard/reference/cluster-toml/">cluster.toml</a></li><li><a href="/shard/reference/tasks-toml/">tasks.toml</a></li><li><a href="/shard/reference/files/">Files and exit codes</a></li></ul></li><li><a href="/shard/troubleshooting/">Troubleshooting</a></li><li><a href="/shard/whats-next/">What is not here yet</a></li></ul>
+            <footer class="site-footer"><a href="https://github.com/yavuzselimsahin/atomik-ssg">Generated with atomik-ssg</a></footer>
+        </aside>
+        <main>
+            <article>
+                <h1>Named jobs</h1>
+                <p>Work you do more than once belongs in a file. <code>tasks.toml</code> sits next to
+<code>cluster.toml</code> and holds named jobs:</p>
+<pre><code class="language-bash">shard tasks              # what is written down
+shard run build-all      # run one of them
+</code></pre>
+<h2>The file</h2>
+<pre><code class="language-toml">[[task]]
+name        = &quot;update-all&quot;
+description = &quot;Bring every machine up to date&quot;
+cmd         = &quot;sudo apt-get update &amp;&amp; sudo apt-get -y upgrade&quot;
+on          = [&quot;cpu&quot;]
+
+[[task]]
+name        = &quot;test-suite&quot;
+description = &quot;The whole suite, split across the cluster&quot;
+strategy    = &quot;distribute&quot;
+script      = &quot;tests.sh&quot;
+
+[[task]]
+name        = &quot;simulations&quot;
+description = &quot;1000 runs with different seeds&quot;
+strategy    = &quot;map&quot;
+count       = 1000
+cmd         = &quot;./simulate --seed {i}&quot;
+on          = [&quot;cpu&quot;]
+
+[[task]]
+name        = &quot;release&quot;
+description = &quot;Build, test, publish — in that order&quot;
+strategy    = &quot;pipeline&quot;
+
+  [[task.step]]
+  name = &quot;build&quot;
+  cmd  = &quot;make release&quot;
+  on   = [&quot;fast&quot;]
+
+  [[task.step]]
+  name = &quot;test&quot;
+  cmd  = &quot;make test&quot;
+  on   = [&quot;fast&quot;]
+
+  [[task.step]]
+  name = &quot;publish&quot;
+  cmd  = &quot;./publish.sh&quot;
+  on   = [&quot;cloud&quot;]
+</code></pre>
+<p><code>shard tasks</code> prints exactly this, in short:</p>
+<pre><code>tasks.toml — 4 tasks
+
+update-all        broadcast   Bring every machine up to date
+  sudo apt-get update &amp;&amp; sudo apt-get -y upgrade
+test-suite        distribute  The whole suite, split across the cluster
+  tests.sh
+simulations       map         1000 runs with different seeds
+  ./simulate --seed {i}
+release           pipeline    Build, test, publish — in that order
+  build           make release
+  test            make test
+  publish         ./publish.sh
+</code></pre>
+<h2>The five strategies</h2>
+<table>
+  <tr><th>strategy</th><th>What the task needs</th><th>What happens</th></tr>
+  <tr><td><code>broadcast</code></td><td><code>cmd</code></td>
+      <td>The command runs on every selected machine.</td></tr>
+  <tr><td><code>map</code></td><td><code>cmd</code> with <code>{i}</code>, <code>count</code></td>
+      <td>The command runs <code>count</code> times, spread over the machines.</td></tr>
+  <tr><td><code>distribute</code></td><td><code>script</code></td>
+      <td>The file's lines are shared out between the machines.</td></tr>
+  <tr><td><code>steps</code></td><td><code>[[task.step]]</code> blocks</td>
+      <td>Every step starts at the same time, each on its own machine.</td></tr>
+  <tr><td><code>pipeline</code></td><td><code>[[task.step]]</code> blocks</td>
+      <td>The steps run in order and stop at the first failure.</td></tr>
+</table>
+<p>You can leave <code>strategy</code> out: a task with steps is <code>steps</code>, one with a <code>count</code>
+is <code>map</code>, one with a <code>script</code> is <code>distribute</code>, and one with just a <code>cmd</code> is
+<code>broadcast</code>.</p>
+<h2>What a task may set</h2>
+<table>
+  <tr><th>Key</th><th>Meaning</th></tr>
+  <tr><td><code>name</code></td><td>What you type after <code>shard run</code>.</td></tr>
+  <tr><td><code>description</code></td><td>One line, shown by <code>shard tasks</code>.</td></tr>
+  <tr><td><code>strategy</code></td><td>One of the five above.</td></tr>
+  <tr><td><code>cmd</code></td><td>The command, for <code>broadcast</code> and <code>map</code>.</td></tr>
+  <tr><td><code>script</code></td><td>The file, for <code>distribute</code>.</td></tr>
+  <tr><td><code>count</code>, <code>start</code></td><td>How many items, and the first number, for <code>map</code>.</td></tr>
+  <tr><td><code>on</code></td><td>Which machines: a name, a tag, or a list of them.</td></tr>
+  <tr><td><code>timeout</code>, <code>jobs</code></td><td>The same limits the command line takes.</td></tr>
+  <tr><td><code>retry</code></td><td>Extra attempts for a failed job or item. Default none.</td></tr>
+</table>
+<p>A <code>[[task.step]]</code> takes <code>name</code>, <code>cmd</code>, its own <code>on</code>, and <code>produces</code> — the
+files it leaves behind, which are carried to the machine the next step runs
+on:</p>
+<pre><code class="language-toml">  [[task.step]]
+  name     = &quot;build&quot;
+  cmd      = &quot;make release&quot;
+  on       = [&quot;fast&quot;]
+  produces = [&quot;dist/app.tar.gz&quot;]
+
+  [[task.step]]
+  name = &quot;publish&quot;
+  cmd  = &quot;./publish.sh dist/app.tar.gz&quot;
+  on   = [&quot;cloud&quot;]
+</code></pre>
+<p>See <a href="/shard/guide/pipelines/">Carrying files to the next step</a> for how that
+travels.</p>
+<h2>Changing your mind at the keyboard</h2>
+<p>Anything you type wins over what the file says:</p>
+<pre><code class="language-bash">shard run simulations --on cloud     # somewhere else, just this once
+shard run release --dry-run          # show the steps, run nothing
+shard run test-suite --stream        # watch it happen
+</code></pre>
+<h2>Where the file is looked for</h2>
+<p><code>tasks.toml</code> in the current directory, then <code>~/.shard/tasks.toml</code>. Pass
+<code>--tasks &lt;file&gt;</code> to use another one, or set <code>SHARD_TASKS</code>.</p>
+<p>Keeping it next to the project it belongs to is usually right: the tasks
+travel with the code, and someone who clones the repository can read what you
+run without asking.</p>
+
+            </article>
+            <nav class="post-nav">
+                <a class="prev" href="/shard/guide/pipelines/">Steps and pipelines</a>
+                <a class="next" href="/shard/guide/queue/">Queueing jobs</a>
+            </nav>
+            <a class="edit" href="">Edit this page</a>
+        </main>
+    </div>
+    <script>
+    (function () {
+        var here = location.pathname;
+        document.querySelectorAll('.sidebar > ul a').forEach(function (a) {
+            if (a.getAttribute('href') === here) a.classList.add('active');
+        });
+
+        var root = document.documentElement;
+        var button = document.querySelector('.theme-toggle');
+        if (button) button.addEventListener('click', function () {
+            /* No stored choice yet means we are following the system. */
+            var now = root.getAttribute('data-theme') ||
+                (matchMedia('(prefers-color-scheme: dark)').matches
+                    ? 'dark' : 'light');
+            var next = now === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    })();
+    </script>
+</body>
+</html>

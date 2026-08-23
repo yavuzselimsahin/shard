@@ -1,0 +1,67 @@
+# Work you run more than once, written down.
+#
+#   shard tasks              what is in here
+#   shard run test-suite     run one of them
+
+[[task]]
+name        = "update-all"
+description = "Bring every machine up to date"
+cmd         = "sudo apt-get update && sudo apt-get -y upgrade"
+on          = ["cpu"]
+timeout     = 600
+
+[[task]]
+name        = "test-suite"
+description = "The whole suite, split across the cluster"
+strategy    = "distribute"
+script      = "tests.sh"
+
+[[task]]
+name        = "simulations"
+description = "1000 runs, one per seed; a failed one is tried elsewhere once"
+strategy    = "map"
+count       = 1000
+cmd         = "./simulate --seed {i}"
+on          = ["cpu"]
+retry       = 1
+
+[[task]]
+name        = "build-all-platforms"
+description = "Three builds at the same time, on whichever machines are free"
+strategy    = "steps"
+
+  [[task.step]]
+  name = "linux"
+  cmd  = "make TARGET=linux"
+  on   = ["cpu"]
+
+  [[task.step]]
+  name = "macos"
+  cmd  = "make TARGET=macos"
+  on   = ["laptop"]
+
+  [[task.step]]
+  name = "windows"
+  cmd  = "make TARGET=windows"
+  on   = ["cpu"]
+
+[[task]]
+name        = "release"
+description = "Build, test, publish — in that order, stopping if one fails"
+strategy    = "pipeline"
+
+  [[task.step]]
+  name     = "build"
+  cmd      = "make release"
+  on       = ["laptop"]
+  produces = ["dist/app.tar.gz"]     # carried to the machine the next step uses
+
+  [[task.step]]
+  name = "test"
+  cmd  = "make test"
+  on   = ["laptop"]
+
+  [[task.step]]
+  name = "publish"
+  cmd  = "./publish.sh dist/app.tar.gz"
+  on   = ["cloud"]

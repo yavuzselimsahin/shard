@@ -1,0 +1,38 @@
+# Three load-heavy example jobs, written down so you can run them by name:
+#
+#   shard --tasks tasks.toml tasks
+#   shard --tasks tasks.toml run pi
+#
+# Turn the load up or down with the knob noted on each. Paths assume you run
+# from this directory; make them absolute if you run from elsewhere.
+
+[[task]]
+name        = "pi"
+description = "Monte Carlo pi — thousands of independent trials (map)"
+strategy    = "map"
+count       = 200
+cmd         = "python3 montecarlo_pi.py --seed {i} --samples 20000000"
+on          = ["all"]
+retry       = 1
+with        = ["montecarlo_pi.py"]   # shipped to workers that do not have it
+# Load knob: --samples. Verify with:  shard logs last | python3 combine.py
+
+[[task]]
+name        = "render"
+description = "Mandelbrot zoom — a render farm over the frames (map)"
+strategy    = "map"
+count       = 300
+cmd         = "python3 mandelbrot.py --frame {i} --frames 300 --size 512 --out frames"
+on          = ["all"]
+with        = ["mandelbrot.py"]
+# Load knob: --size. Each machine writes its frames into its own ./frames.
+
+[[task]]
+name        = "hash"
+description = "PBKDF2 batches, uneven on purpose — shows dynamic balancing (distribute)"
+strategy    = "distribute"
+script      = "worklist.sh"
+on          = ["all"]
+with        = ["pbkdf2_bench.py"]
+# First run:  sh make_worklist.sh > worklist.sh
+# Load knob: --rounds inside make_worklist.sh.

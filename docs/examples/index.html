@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Example workloads</title>
+    <meta name="description" content="Three heavy jobs to try the tool on">
+    <link rel="stylesheet" href="/shard/style.css">
+    <script>
+    /* Runs before the first paint, so a reader who chose a scheme never
+       sees the other one flash first. */
+    (function () {
+        var t = localStorage.getItem('theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/shard/">shard</a>
+        <span class="version">0.1.0</span>
+        <button class="theme-toggle" type="button"
+                aria-label="Switch between light and dark">
+            <span class="in-light">Dark</span>
+            <span class="in-dark">Light</span>
+        </button>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <ul><li><a href="/shard/introduction/">Introduction</a></li><li><a href="/shard/installation/">Installation</a></li><li><a href="/shard/quick-start/">Quick start</a></li><li><a href="/shard/guide/">Guide</a><ul><li><a href="/shard/guide/cluster-file/">The cluster file</a></li><li><a href="/shard/guide/shipping-code/">Shipping your code</a></li><li><a href="/shard/guide/running-commands/">Running commands</a></li><li><a href="/shard/guide/sharing-work/">Sharing work out</a></li><li><a href="/shard/guide/many-runs/">Running one thing many times</a></li><li><a href="/shard/guide/pipelines/">Steps and pipelines</a></li><li><a href="/shard/guide/tasks-file/">Named jobs</a></li><li><a href="/shard/guide/queue/">Queueing jobs</a></li><li><a href="/shard/guide/logs-and-history/">Logs and history</a></li><li><a href="/shard/guide/web-dashboard/">The web dashboard</a></li><li><a href="/shard/guide/terminal-dashboard/">The terminal dashboard</a></li></ul></li><li><a href="/shard/examples/">Example workloads</a></li><li><a href="/shard/reference/">Reference</a><ul><li><a href="/shard/reference/commands/">Commands</a></li><li><a href="/shard/reference/cluster-toml/">cluster.toml</a></li><li><a href="/shard/reference/tasks-toml/">tasks.toml</a></li><li><a href="/shard/reference/files/">Files and exit codes</a></li></ul></li><li><a href="/shard/troubleshooting/">Troubleshooting</a></li><li><a href="/shard/whats-next/">What is not here yet</a></li></ul>
+            <footer class="site-footer"><a href="https://github.com/yavuzselimsahin/atomik-ssg">Generated with atomik-ssg</a></footer>
+        </aside>
+        <main>
+            <article>
+                <h1>Example workloads</h1>
+                <p><code>echo hello</code> shows that shard reaches your machines. To see what it is <em>for</em>,
+you want work that actually keeps them busy for a minute or two — that is where
+the speedup, the live progress and the dashboards mean something.</p>
+<p>These three come with the source, under <a href="https://github.com/yavuzselimsahin/shard/tree/main/examples/workloads"><code>examples/workloads/</code></a>. Each is a
+small standard-library Python script — nothing to install — and each shows off
+a different strategy. They all run on one machine; point <code>cluster.toml</code> at more
+and the same commands spread across them. The <code>--with</code> on each command
+<a href="/shard/guide/shipping-code/">ships the script</a> to the machines that do not have it.</p>
+<h2>1. Monte Carlo π — a <code>map</code></h2>
+<p>Throw darts at a square and count how many land in the circle. Every trial is
+independent, which is exactly what <a href="/shard/guide/many-runs/"><code>map</code></a> spreads well:</p>
+<pre><code class="language-bash">shard map &quot;python3 montecarlo_pi.py --seed {i} --samples 20000000&quot; \
+  --count 200 --on cpu --retry 1 --with montecarlo_pi.py
+</code></pre>
+<p>The estimates average out to π — verify it straight from the logs:</p>
+<pre><code class="language-bash">shard logs last | python3 combine.py
+# 200 estimates, 4,000,000,000 samples total
+# pi ~= 3.141582   (error 0.000011)
+</code></pre>
+<p>Turn the load up with <code>--samples</code>.</p>
+<h2>2. Mandelbrot zoom — a render farm</h2>
+<p>Render hundreds of frames of a zoom, each an independent heavy picture — the
+home-lab render farm, handed out frame by frame:</p>
+<pre><code class="language-bash">shard map &quot;python3 mandelbrot.py --frame {i} --frames 300 --size 512 --out frames&quot; \
+  --count 300 --on cpu --with mandelbrot.py
+</code></pre>
+<p>Each machine writes its share into its own <code>frames/</code> directory. Count them:</p>
+<pre><code class="language-bash">shard exec &quot;ls frames | wc -l&quot; --on cpu
+</code></pre>
+<p>Later frames zoom deeper and take longer, so this is a good way to watch
+dynamic dispatch give the free machines more to do. Turn the load up with
+<code>--size</code>.</p>
+<h2>3. PBKDF2 batches — uneven on purpose</h2>
+<p>Password hashing is meant to be slow, which makes it a real reason to spread
+the work out. This work list is <strong>deliberately lumpy</strong> — every sixth batch is
+ten times heavier — so you can see <a href="/shard/guide/sharing-work/"><code>--distribute</code></a> hand
+the light batches out fast and keep every machine busy:</p>
+<pre><code class="language-bash">sh make_worklist.sh &gt; worklist.sh
+shard exec-script worklist.sh --distribute --on cpu --with pbkdf2_bench.py
+</code></pre>
+<p>The per-machine counts at the end come out uneven, because the machines that
+drew heavy batches took fewer of them:</p>
+<pre><code>  laptop        1 worker · 5 items
+  old-desktop   1 worker · 3 items      &lt;- drew two heavy batches
+  ec2-worker    1 worker · 6 items
+</code></pre>
+<p>Run it again with <code>--static</code> to feel the difference: fixed shares finish only
+when the unluckiest machine does.</p>
+<h2>Watching it happen</h2>
+<p>While any of these runs, in another terminal:</p>
+<pre><code class="language-bash">shard tui           # live, in the terminal
+shard ui            # live, in a browser
+</code></pre>
+<p>Both fill a progress bar, show the per-machine item counts, and tail the log
+of whichever worker you pick. The full walkthrough, with load knobs and
+<code>tasks.toml</code> entries for all three, is in the workloads
+<a href="https://github.com/yavuzselimsahin/shard/tree/main/examples/workloads">README</a>.</p>
+
+            </article>
+            <nav class="post-nav">
+                <a class="prev" href="/shard/guide/terminal-dashboard/">The terminal dashboard</a>
+                <a class="next" href="/shard/reference/">Reference</a>
+            </nav>
+            <a class="edit" href="">Edit this page</a>
+        </main>
+    </div>
+    <script>
+    (function () {
+        var here = location.pathname;
+        document.querySelectorAll('.sidebar > ul a').forEach(function (a) {
+            if (a.getAttribute('href') === here) a.classList.add('active');
+        });
+
+        var root = document.documentElement;
+        var button = document.querySelector('.theme-toggle');
+        if (button) button.addEventListener('click', function () {
+            /* No stored choice yet means we are following the system. */
+            var now = root.getAttribute('data-theme') ||
+                (matchMedia('(prefers-color-scheme: dark)').matches
+                    ? 'dark' : 'light');
+            var next = now === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick start</title>
+    <meta name="description" content="From nothing to a command running everywhere">
+    <link rel="stylesheet" href="/shard/style.css">
+    <script>
+    /* Runs before the first paint, so a reader who chose a scheme never
+       sees the other one flash first. */
+    (function () {
+        var t = localStorage.getItem('theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/shard/">shard</a>
+        <span class="version">0.1.0</span>
+        <button class="theme-toggle" type="button"
+                aria-label="Switch between light and dark">
+            <span class="in-light">Dark</span>
+            <span class="in-dark">Light</span>
+        </button>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <ul><li><a href="/shard/introduction/">Introduction</a></li><li><a href="/shard/installation/">Installation</a></li><li><a href="/shard/quick-start/">Quick start</a></li><li><a href="/shard/guide/">Guide</a><ul><li><a href="/shard/guide/cluster-file/">The cluster file</a></li><li><a href="/shard/guide/shipping-code/">Shipping your code</a></li><li><a href="/shard/guide/running-commands/">Running commands</a></li><li><a href="/shard/guide/sharing-work/">Sharing work out</a></li><li><a href="/shard/guide/many-runs/">Running one thing many times</a></li><li><a href="/shard/guide/pipelines/">Steps and pipelines</a></li><li><a href="/shard/guide/tasks-file/">Named jobs</a></li><li><a href="/shard/guide/queue/">Queueing jobs</a></li><li><a href="/shard/guide/logs-and-history/">Logs and history</a></li><li><a href="/shard/guide/web-dashboard/">The web dashboard</a></li><li><a href="/shard/guide/terminal-dashboard/">The terminal dashboard</a></li></ul></li><li><a href="/shard/examples/">Example workloads</a></li><li><a href="/shard/reference/">Reference</a><ul><li><a href="/shard/reference/commands/">Commands</a></li><li><a href="/shard/reference/cluster-toml/">cluster.toml</a></li><li><a href="/shard/reference/tasks-toml/">tasks.toml</a></li><li><a href="/shard/reference/files/">Files and exit codes</a></li></ul></li><li><a href="/shard/troubleshooting/">Troubleshooting</a></li><li><a href="/shard/whats-next/">What is not here yet</a></li></ul>
+            <footer class="site-footer"><a href="https://github.com/yavuzselimsahin/atomik-ssg">Generated with atomik-ssg</a></footer>
+        </aside>
+        <main>
+            <article>
+                <h1>Quick start</h1>
+                <p>This takes about five minutes. You will end with a cluster file, a health
+check, and one command running on every machine in it.</p>
+<h2>1. Create a cluster file</h2>
+<p>In the directory where you work:</p>
+<pre><code class="language-bash">shard cluster init
+</code></pre>
+<p>That writes a <code>cluster.toml</code> containing one machine: the one you are sitting
+at. Everything works with just that machine, which makes it a safe place to
+try things.</p>
+<h2>2. Add your other machines</h2>
+<p>Open <code>cluster.toml</code> and add a block per machine:</p>
+<pre><code class="language-toml">[[nodes]]
+name   = &quot;old-desktop&quot;
+host   = &quot;192.168.1.15&quot;
+user   = &quot;yavuz&quot;
+tags   = [&quot;cpu&quot;]
+cpu    = 2
+</code></pre>
+<p><code>name</code> is what you will type. <code>host</code> is the address. <code>user</code> is the SSH user,
+if it differs from yours. <code>cpu</code> tells shard how much work this machine can
+take relative to the others. <code>tags</code> let you address several machines at once.</p>
+<p>There is an interactive version if you prefer being asked:</p>
+<pre><code class="language-bash">shard cluster add-node
+</code></pre>
+<h2>3. Check that they answer</h2>
+<pre><code class="language-bash">shard cluster health
+</code></pre>
+<pre><code>● laptop           online   8 CPU  16384 MB  ▓▓░░░░░░░░  18% cpu  ▓▓▓▓░░░░░░  41% ram  2 ms
+● old-desktop      online   2 CPU   3900 MB  ░░░░░░░░░░   4% cpu  ▓▓░░░░░░░░  22% ram  31 ms
+○ ec2-worker       offline  ssh: connect to host … : Connection refused
+
+2/3 online
+</code></pre>
+<p>A machine that shows as offline is one you cannot SSH into without a password.
+<a href="/shard/troubleshooting/">Troubleshooting</a> walks through the usual causes.</p>
+<h2>4. Run something</h2>
+<pre><code class="language-bash">shard exec &quot;uname -sm&quot; --on all
+</code></pre>
+<pre><code>[laptop]       uname -sm                        ✓ completed (0.12s)
+[old-desktop]  uname -sm                        ✓ completed (0.44s)
+
+2/2 completed in 0.44s
+Total machine time: 0.56s (21% faster than one after another)
+Logs: shard logs 20260822-211013-1490
+</code></pre>
+<p>The commands run at the same time, not one after the other. The run finishes
+when the slowest machine finishes.</p>
+<h2>5. Read the output</h2>
+<p>The summary line tells you what happened; the output itself is in the logs:</p>
+<pre><code class="language-bash">shard logs last
+</code></pre>
+<h2>6. Watch it in a browser</h2>
+<pre><code class="language-bash">shard ui
+</code></pre>
+<p>Open <a href="http://localhost:8787">http://localhost:8787</a>. You get the machines, what they are doing, and
+the output of every run — see <a href="/shard/guide/web-dashboard/">The web dashboard</a>.</p>
+<h2>Where next</h2>
+<ul>
+<li><a href="/shard/guide/running-commands/">Running commands</a> — choosing machines, live
+output, timeouts.</li>
+<li><a href="/shard/guide/sharing-work/">Sharing work out</a> — splitting a long list of jobs
+across machines instead of repeating it on each.</li>
+<li><a href="/shard/guide/many-runs/">Running one thing many times</a> — one command, a thousand
+different numbers.</li>
+<li><a href="/shard/guide/tasks-file/">Named jobs</a> — writing the work down in <code>tasks.toml</code> so
+it becomes <code>shard run &lt;name&gt;</code>.</li>
+</ul>
+
+            </article>
+            <nav class="post-nav">
+                <a class="prev" href="/shard/installation/">Installation</a>
+                <a class="next" href="/shard/guide/">Guide</a>
+            </nav>
+            <a class="edit" href="">Edit this page</a>
+        </main>
+    </div>
+    <script>
+    (function () {
+        var here = location.pathname;
+        document.querySelectorAll('.sidebar > ul a').forEach(function (a) {
+            if (a.getAttribute('href') === here) a.classList.add('active');
+        });
+
+        var root = document.documentElement;
+        var button = document.querySelector('.theme-toggle');
+        if (button) button.addEventListener('click', function () {
+            /* No stored choice yet means we are following the system. */
+            var now = root.getAttribute('data-theme') ||
+                (matchMedia('(prefers-color-scheme: dark)').matches
+                    ? 'dark' : 'light');
+            var next = now === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shipping your code</title>
+    <meta name="description" content="Running a script on machines that have never seen it">
+    <link rel="stylesheet" href="/shard/style.css">
+    <script>
+    /* Runs before the first paint, so a reader who chose a scheme never
+       sees the other one flash first. */
+    (function () {
+        var t = localStorage.getItem('theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/shard/">shard</a>
+        <span class="version">0.1.0</span>
+        <button class="theme-toggle" type="button"
+                aria-label="Switch between light and dark">
+            <span class="in-light">Dark</span>
+            <span class="in-dark">Light</span>
+        </button>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <ul><li><a href="/shard/introduction/">Introduction</a></li><li><a href="/shard/installation/">Installation</a></li><li><a href="/shard/quick-start/">Quick start</a></li><li><a href="/shard/guide/">Guide</a><ul><li><a href="/shard/guide/cluster-file/">The cluster file</a></li><li><a href="/shard/guide/shipping-code/">Shipping your code</a></li><li><a href="/shard/guide/running-commands/">Running commands</a></li><li><a href="/shard/guide/sharing-work/">Sharing work out</a></li><li><a href="/shard/guide/many-runs/">Running one thing many times</a></li><li><a href="/shard/guide/pipelines/">Steps and pipelines</a></li><li><a href="/shard/guide/tasks-file/">Named jobs</a></li><li><a href="/shard/guide/queue/">Queueing jobs</a></li><li><a href="/shard/guide/logs-and-history/">Logs and history</a></li><li><a href="/shard/guide/web-dashboard/">The web dashboard</a></li><li><a href="/shard/guide/terminal-dashboard/">The terminal dashboard</a></li></ul></li><li><a href="/shard/examples/">Example workloads</a></li><li><a href="/shard/reference/">Reference</a><ul><li><a href="/shard/reference/commands/">Commands</a></li><li><a href="/shard/reference/cluster-toml/">cluster.toml</a></li><li><a href="/shard/reference/tasks-toml/">tasks.toml</a></li><li><a href="/shard/reference/files/">Files and exit codes</a></li></ul></li><li><a href="/shard/troubleshooting/">Troubleshooting</a></li><li><a href="/shard/whats-next/">What is not here yet</a></li></ul>
+            <footer class="site-footer"><a href="https://github.com/yavuzselimsahin/atomik-ssg">Generated with atomik-ssg</a></footer>
+        </aside>
+        <main>
+            <article>
+                <h1>Shipping your code</h1>
+                <p>The whole idea is to run <em>your</em> code on other machines — machines that borrow
+you their CPU without knowing anything about the job. So the code has to travel
+with the work.</p>
+<p>By default it does not. <code>shard exec &quot;python3 sim.py&quot;</code> runs <code>python3 sim.py</code> on
+each machine, and if <code>sim.py</code> is not already there, it fails. <code>--with</code> fixes
+that: it sends the files along before the job runs.</p>
+<pre><code class="language-bash">shard map &quot;python3 sim.py --seed {i}&quot; --count 1000 --with sim.py
+</code></pre>
+<p>Now every machine gets a copy of <code>sim.py</code>, runs its share, and the copy is
+removed afterwards. Nothing was installed and nothing is left behind.</p>
+<h2>What you can send</h2>
+<p>Repeat <code>--with</code> for more than one file, and name a directory to send a whole
+tree:</p>
+<pre><code class="language-bash">shard map &quot;python3 run.py --case {i}&quot; --count 500 \
+  --with run.py --with helpers.py --with data/
+</code></pre>
+<p>Paths are relative to where you are standing. On the far machine they keep the
+same shape: <code>--with data/</code> becomes a <code>data/</code> next to your command, so
+<code>python3 run.py</code> finds <code>data/</code> exactly where it expects it.</p>
+<h2>Where it runs</h2>
+<p>The files land in a fresh per-run directory on each machine, and the command
+runs there. When the run ends the directory is deleted. To keep it — to poke
+around after a failure — add <code>--keep</code>:</p>
+<pre><code class="language-bash">shard exec &quot;python3 build.py&quot; --on cpu --with build.py --keep
+</code></pre>
+<h2>What does not travel back</h2>
+<p><code>--with</code> sends code <em>to</em> the machines. Whatever the job writes stays on the
+machine that produced it, in that per-run directory (or wherever your command
+put it). Three ways to get results back:</p>
+<ul>
+<li><strong>Print them.</strong> Anything the job writes to output is in the logs:
+<code>shard logs last</code>. The Monte Carlo example averages its answer straight out
+of the logs this way.</li>
+<li><strong>In a pipeline</strong>, name the files with <code>produces</code> and the next step receives
+them — see <a href="/shard/guide/pipelines/">Steps and pipelines</a>.</li>
+<li><strong>Copy them yourself</strong> at the end of the job, with an <code>scp</code> or an upload to
+wherever you keep results.</li>
+</ul>
+<h2>This machine is not shipped to</h2>
+<p>A <code>localhost</code> node already has your files in the working directory, so nothing
+is sent to it — it just runs where you are. <code>--with</code> only touches the machines
+that actually need the code.</p>
+<h2>Not just Python</h2>
+<p>Nothing here is language-specific. Ship a shell script, a compiled binary, a
+jar — anything the far machine can run:</p>
+<pre><code class="language-bash">shard exec &quot;./render --frame 1&quot; --on gpu --with render --with scene.blend
+</code></pre>
+<p>The one thing shard assumes is that the machine can <em>run</em> what you send: a
+binary built for your laptop will not run on a different kind of machine. Code
+that the far machine builds or interprets — a script, or source it compiles
+first — travels without that worry.</p>
+
+            </article>
+            <nav class="post-nav">
+                <a class="prev" href="/shard/guide/cluster-file/">The cluster file</a>
+                <a class="next" href="/shard/guide/running-commands/">Running commands</a>
+            </nav>
+            <a class="edit" href="">Edit this page</a>
+        </main>
+    </div>
+    <script>
+    (function () {
+        var here = location.pathname;
+        document.querySelectorAll('.sidebar > ul a').forEach(function (a) {
+            if (a.getAttribute('href') === here) a.classList.add('active');
+        });
+
+        var root = document.documentElement;
+        var button = document.querySelector('.theme-toggle');
+        if (button) button.addEventListener('click', function () {
+            /* No stored choice yet means we are following the system. */
+            var now = root.getAttribute('data-theme') ||
+                (matchMedia('(prefers-color-scheme: dark)').matches
+                    ? 'dark' : 'light');
+            var next = now === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    })();
+    </script>
+</body>
+</html>

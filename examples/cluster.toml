@@ -1,0 +1,32 @@
+# A cluster mixing a laptop, a machine in the next room and a cloud VM.
+# Copy this next to your work, change the addresses, and run:
+#
+#   shard cluster health
+
+[cluster]
+name    = "home-lab"
+log_dir = "~/.shard/logs"
+
+[[nodes]]
+name = "laptop"
+host = "localhost"        # this machine: no SSH involved
+tags = ["local", "fast"]
+cpu  = 8
+ram_gb = 16
+
+[[nodes]]
+name   = "old-desktop"
+host   = "192.168.1.15"
+user   = "yavuz"
+tags   = ["cpu"]
+cpu    = 2
+ram_gb = 4
+
+[[nodes]]
+name   = "ec2-worker"
+host   = "ec2-13-58-0-1.compute.amazonaws.com"
+user   = "ubuntu"
+key    = "~/.ssh/aws-key.pem"
+tags   = ["cloud", "cpu"]
+cpu    = 4
+ram_gb = 8

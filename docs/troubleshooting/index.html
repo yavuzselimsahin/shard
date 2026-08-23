@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Troubleshooting</title>
+    <meta name="description" content="When a machine will not answer">
+    <link rel="stylesheet" href="/shard/style.css">
+    <script>
+    /* Runs before the first paint, so a reader who chose a scheme never
+       sees the other one flash first. */
+    (function () {
+        var t = localStorage.getItem('theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/shard/">shard</a>
+        <span class="version">0.1.0</span>
+        <button class="theme-toggle" type="button"
+                aria-label="Switch between light and dark">
+            <span class="in-light">Dark</span>
+            <span class="in-dark">Light</span>
+        </button>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <ul><li><a href="/shard/introduction/">Introduction</a></li><li><a href="/shard/installation/">Installation</a></li><li><a href="/shard/quick-start/">Quick start</a></li><li><a href="/shard/guide/">Guide</a><ul><li><a href="/shard/guide/cluster-file/">The cluster file</a></li><li><a href="/shard/guide/shipping-code/">Shipping your code</a></li><li><a href="/shard/guide/running-commands/">Running commands</a></li><li><a href="/shard/guide/sharing-work/">Sharing work out</a></li><li><a href="/shard/guide/many-runs/">Running one thing many times</a></li><li><a href="/shard/guide/pipelines/">Steps and pipelines</a></li><li><a href="/shard/guide/tasks-file/">Named jobs</a></li><li><a href="/shard/guide/queue/">Queueing jobs</a></li><li><a href="/shard/guide/logs-and-history/">Logs and history</a></li><li><a href="/shard/guide/web-dashboard/">The web dashboard</a></li><li><a href="/shard/guide/terminal-dashboard/">The terminal dashboard</a></li></ul></li><li><a href="/shard/examples/">Example workloads</a></li><li><a href="/shard/reference/">Reference</a><ul><li><a href="/shard/reference/commands/">Commands</a></li><li><a href="/shard/reference/cluster-toml/">cluster.toml</a></li><li><a href="/shard/reference/tasks-toml/">tasks.toml</a></li><li><a href="/shard/reference/files/">Files and exit codes</a></li></ul></li><li><a href="/shard/troubleshooting/">Troubleshooting</a></li><li><a href="/shard/whats-next/">What is not here yet</a></li></ul>
+            <footer class="site-footer"><a href="https://github.com/yavuzselimsahin/atomik-ssg">Generated with atomik-ssg</a></footer>
+        </aside>
+        <main>
+            <article>
+                <h1>Troubleshooting</h1>
+                <p>Almost everything that goes wrong is SSH, and the fix is the same in each
+case: make the plain <code>ssh</code> command work first, and shard follows.</p>
+<h2>&quot;no cluster.toml found&quot;</h2>
+<p>shard looked in the current directory and in <code>~/.shard/</code>. Either run
+<code>shard cluster init</code> here, or point at the file you have:</p>
+<pre><code class="language-bash">shard exec &quot;uptime&quot; --config ~/work/cluster.toml
+</code></pre>
+<h2>A machine shows as offline</h2>
+<p>Try it by hand, exactly as shard does:</p>
+<pre><code class="language-bash">ssh -o BatchMode=yes you@192.168.1.15 &quot;uptime&quot;
+</code></pre>
+<table>
+  <tr><th>What you see</th><th>What it means</th></tr>
+  <tr><td><code>Permission denied (publickey)</code></td>
+      <td>Your key is not on that machine. Run <code>ssh-copy-id you@host</code>.</td></tr>
+  <tr><td><code>Connection refused</code></td>
+      <td>Nothing is listening on port 22. Is the machine on? Is its SSH server running?</td></tr>
+  <tr><td><code>Operation timed out</code></td>
+      <td>Wrong address, or a firewall between you. Cloud machines need port 22 open to your address.</td></tr>
+  <tr><td><code>Host key verification failed</code></td>
+      <td>The machine's identity changed, or it is new to you. Connect once by hand and accept it.</td></tr>
+  <tr><td>It asks for a password</td>
+      <td>shard never types passwords. Set up a key: see <a href="/shard/installation/">Installation</a>.</td></tr>
+</table>
+<h2>It works by hand but not through shard</h2>
+<p>Check the details in <code>cluster.toml</code> — the <code>user</code>, the <code>port</code>, the <code>key</code> path.
+<code>shard exec &quot;uptime&quot; --on that-machine --dry-run</code> prints the exact command
+line being used, which usually makes the difference obvious.</p>
+<p>If you use an SSH config file with per-host settings, note that shard passes
+its own options but otherwise leaves your <code>~/.ssh/config</code> alone: a <code>Host</code>
+entry with a <code>User</code> and <code>IdentityFile</code> works, and then <code>cluster.toml</code> only
+needs the name.</p>
+<h2>&quot;command not found&quot; on the other machine</h2>
+<p>Your login shell there is not the one your desktop session uses, so <code>PATH</code> may
+be shorter than you expect. Use the full path, or set it yourself:</p>
+<pre><code class="language-bash">shard exec &quot;/usr/local/bin/mytool --version&quot; --on all
+shard exec &quot;export PATH=\$PATH:/usr/local/bin; mytool --version&quot; --on all
+</code></pre>
+<h2>The command ran in the wrong directory</h2>
+<p>SSH starts in the login directory. Either say where to go:</p>
+<pre><code class="language-bash">shard exec &quot;cd /srv/project &amp;&amp; make&quot; --on build
+</code></pre>
+<p>or set it once in <code>cluster.toml</code>:</p>
+<pre><code class="language-toml">workdir = &quot;/srv/project&quot;
+</code></pre>
+<h2>The output is missing</h2>
+<p>Output that never ends up in the log is usually output the program decided not
+to print: many tools stay quiet when they are not talking to a terminal.
+Look for a <code>--verbose</code> or <code>--progress</code> flag, or check the log file directly —
+<code>shard logs last</code> shows both normal output and errors together.</p>
+<h2>A run is stuck</h2>
+<p>Ctrl-C stops shard and takes its SSH connections down with it. Work already
+started on the far machine may keep going; check with:</p>
+<pre><code class="language-bash">shard exec &quot;ps aux | grep myjob&quot; --on all
+</code></pre>
+<p>To avoid the situation, give long jobs a <code>--timeout</code>.</p>
+<h2>The dashboard shows nothing</h2>
+<p><code>shard ui</code> reads the same log directory the command line writes to. If they
+disagree, they are using different cluster files — one of them has a
+<code>log_dir</code> the other does not. <code>shard ui --config &lt;file&gt;</code> pins it down.</p>
+
+            </article>
+            <nav class="post-nav">
+                <a class="prev" href="/shard/reference/files/">Files and exit codes</a>
+                <a class="next" href="/shard/whats-next/">What is not here yet</a>
+            </nav>
+            <a class="edit" href="">Edit this page</a>
+        </main>
+    </div>
+    <script>
+    (function () {
+        var here = location.pathname;
+        document.querySelectorAll('.sidebar > ul a').forEach(function (a) {
+            if (a.getAttribute('href') === here) a.classList.add('active');
+        });
+
+        var root = document.documentElement;
+        var button = document.querySelector('.theme-toggle');
+        if (button) button.addEventListener('click', function () {
+            /* No stored choice yet means we are following the system. */
+            var now = root.getAttribute('data-theme') ||
+                (matchMedia('(prefers-color-scheme: dark)').matches
+                    ? 'dark' : 'light');
+            var next = now === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    })();
+    </script>
+</body>
+</html>

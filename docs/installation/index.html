@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installation</title>
+    <meta name="description" content="Building shard and putting it on your PATH">
+    <link rel="stylesheet" href="/shard/style.css">
+    <script>
+    /* Runs before the first paint, so a reader who chose a scheme never
+       sees the other one flash first. */
+    (function () {
+        var t = localStorage.getItem('theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/shard/">shard</a>
+        <span class="version">0.1.0</span>
+        <button class="theme-toggle" type="button"
+                aria-label="Switch between light and dark">
+            <span class="in-light">Dark</span>
+            <span class="in-dark">Light</span>
+        </button>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <ul><li><a href="/shard/introduction/">Introduction</a></li><li><a href="/shard/installation/">Installation</a></li><li><a href="/shard/quick-start/">Quick start</a></li><li><a href="/shard/guide/">Guide</a><ul><li><a href="/shard/guide/cluster-file/">The cluster file</a></li><li><a href="/shard/guide/shipping-code/">Shipping your code</a></li><li><a href="/shard/guide/running-commands/">Running commands</a></li><li><a href="/shard/guide/sharing-work/">Sharing work out</a></li><li><a href="/shard/guide/many-runs/">Running one thing many times</a></li><li><a href="/shard/guide/pipelines/">Steps and pipelines</a></li><li><a href="/shard/guide/tasks-file/">Named jobs</a></li><li><a href="/shard/guide/queue/">Queueing jobs</a></li><li><a href="/shard/guide/logs-and-history/">Logs and history</a></li><li><a href="/shard/guide/web-dashboard/">The web dashboard</a></li><li><a href="/shard/guide/terminal-dashboard/">The terminal dashboard</a></li></ul></li><li><a href="/shard/examples/">Example workloads</a></li><li><a href="/shard/reference/">Reference</a><ul><li><a href="/shard/reference/commands/">Commands</a></li><li><a href="/shard/reference/cluster-toml/">cluster.toml</a></li><li><a href="/shard/reference/tasks-toml/">tasks.toml</a></li><li><a href="/shard/reference/files/">Files and exit codes</a></li></ul></li><li><a href="/shard/troubleshooting/">Troubleshooting</a></li><li><a href="/shard/whats-next/">What is not here yet</a></li></ul>
+            <footer class="site-footer"><a href="https://github.com/yavuzselimsahin/atomik-ssg">Generated with atomik-ssg</a></footer>
+        </aside>
+        <main>
+            <article>
+                <h1>Installation</h1>
+                <p>shard is a single binary. Building it needs a C compiler and <code>make</code>, both of
+which macOS and every Linux distribution already have or can install in one
+step.</p>
+<h2>Build from source</h2>
+<pre><code class="language-bash">git clone https://github.com/yavuzselimsahin/shard.git
+cd shard
+make
+</code></pre>
+<p>The result is a file called <code>shard</code> in that directory. Copy it somewhere on
+your <code>PATH</code>:</p>
+<pre><code class="language-bash">sudo make install          # puts it in /usr/local/bin
+</code></pre>
+<p>Or, without root:</p>
+<pre><code class="language-bash">cp shard ~/.local/bin/
+</code></pre>
+<p>Check that it works:</p>
+<pre><code class="language-bash">shard version
+</code></pre>
+<h2>What has to be true on the other machines</h2>
+<p>Nothing has to be installed on them. They need:</p>
+<ul>
+<li>an SSH server you can log in to,</li>
+<li>a POSIX shell (<code>/bin/sh</code>), which every Linux and macOS install has.</li>
+</ul>
+<p>That is all. The machine you type commands on is the only one that needs the
+shard binary.</p>
+<h2>SSH access without a password</h2>
+<p>shard never asks for a password: it runs SSH in batch mode, so a machine that
+wants a password is treated as unreachable. Set up key-based login once per
+machine:</p>
+<pre><code class="language-bash">ssh-keygen -t ed25519             # if you do not have a key yet
+ssh-copy-id you@192.168.1.15      # copy it to the other machine
+ssh you@192.168.1.15 &quot;uptime&quot;     # should print, without asking anything
+</code></pre>
+<p>If that last command prints the uptime without a prompt, shard can use the
+machine.</p>
+<blockquote class="callout callout-tip">
+<p>Cloud machines usually come with a key file instead. Test them the same way:
+<code>ssh -i ~/.ssh/aws-key.pem ubuntu@your-host &quot;uptime&quot;</code>.</p>
+</blockquote>
+<h2>Uninstalling</h2>
+<pre><code class="language-bash">sudo make uninstall
+rm -rf ~/.shard          # logs and saved health checks
+</code></pre>
+<p>Nothing else is left behind, on your machine or on any other.</p>
+
+            </article>
+            <nav class="post-nav">
+                <a class="prev" href="/shard/introduction/">Introduction</a>
+                <a class="next" href="/shard/quick-start/">Quick start</a>
+            </nav>
+            <a class="edit" href="">Edit this page</a>
+        </main>
+    </div>
+    <script>
+    (function () {
+        var here = location.pathname;
+        document.querySelectorAll('.sidebar > ul a').forEach(function (a) {
+            if (a.getAttribute('href') === here) a.classList.add('active');
+        });
+
+        var root = document.documentElement;
+        var button = document.querySelector('.theme-toggle');
+        if (button) button.addEventListener('click', function () {
+            /* No stored choice yet means we are following the system. */
+            var now = root.getAttribute('data-theme') ||
+                (matchMedia('(prefers-color-scheme: dark)').matches
+                    ? 'dark' : 'light');
+            var next = now === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    })();
+    </script>
+</body>
+</html>

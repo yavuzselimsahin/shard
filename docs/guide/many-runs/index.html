@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Running one thing many times</title>
+    <meta name="description" content="shard map, for a thousand variations of the same command">
+    <link rel="stylesheet" href="/shard/style.css">
+    <script>
+    /* Runs before the first paint, so a reader who chose a scheme never
+       sees the other one flash first. */
+    (function () {
+        var t = localStorage.getItem('theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/shard/">shard</a>
+        <span class="version">0.1.0</span>
+        <button class="theme-toggle" type="button"
+                aria-label="Switch between light and dark">
+            <span class="in-light">Dark</span>
+            <span class="in-dark">Light</span>
+        </button>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <ul><li><a href="/shard/introduction/">Introduction</a></li><li><a href="/shard/installation/">Installation</a></li><li><a href="/shard/quick-start/">Quick start</a></li><li><a href="/shard/guide/">Guide</a><ul><li><a href="/shard/guide/cluster-file/">The cluster file</a></li><li><a href="/shard/guide/shipping-code/">Shipping your code</a></li><li><a href="/shard/guide/running-commands/">Running commands</a></li><li><a href="/shard/guide/sharing-work/">Sharing work out</a></li><li><a href="/shard/guide/many-runs/">Running one thing many times</a></li><li><a href="/shard/guide/pipelines/">Steps and pipelines</a></li><li><a href="/shard/guide/tasks-file/">Named jobs</a></li><li><a href="/shard/guide/queue/">Queueing jobs</a></li><li><a href="/shard/guide/logs-and-history/">Logs and history</a></li><li><a href="/shard/guide/web-dashboard/">The web dashboard</a></li><li><a href="/shard/guide/terminal-dashboard/">The terminal dashboard</a></li></ul></li><li><a href="/shard/examples/">Example workloads</a></li><li><a href="/shard/reference/">Reference</a><ul><li><a href="/shard/reference/commands/">Commands</a></li><li><a href="/shard/reference/cluster-toml/">cluster.toml</a></li><li><a href="/shard/reference/tasks-toml/">tasks.toml</a></li><li><a href="/shard/reference/files/">Files and exit codes</a></li></ul></li><li><a href="/shard/troubleshooting/">Troubleshooting</a></li><li><a href="/shard/whats-next/">What is not here yet</a></li></ul>
+            <footer class="site-footer"><a href="https://github.com/yavuzselimsahin/atomik-ssg">Generated with atomik-ssg</a></footer>
+        </aside>
+        <main>
+            <article>
+                <h1>Running one thing many times</h1>
+                <p>Some work is one command repeated with a different number each time: a
+thousand simulations with a different seed, a hundred renders of different
+frames, fifty test runs with different parameters.</p>
+<pre><code class="language-bash">shard map &quot;./simulate --seed {i}&quot; --count 1000
+</code></pre>
+<p><code>{i}</code> is replaced with the run's number. The runs are spread across your
+machines and happen at the same time.</p>
+<h2>What the numbers are</h2>
+<p>By default they start at 0, so <code>--count 1000</code> gives you 0 to 999. To start
+somewhere else:</p>
+<pre><code class="language-bash">shard map &quot;./render --frame {i}&quot; --count 240 --start 1
+</code></pre>
+<p>That runs frames 1 to 240. <code>{index}</code> works as well as <code>{i}</code>, if you prefer the
+longer name.</p>
+<h2>How the work is spread</h2>
+<p>Each machine runs several items at once — as many as the <code>cpu</code> you gave it in
+<code>cluster.toml</code>. Each of those is called a worker, and each worker is given one
+item at a time: when it reports an item finished, it gets the next one.</p>
+<pre><code>1000 items across 3 nodes, 14 workers, handed out as they finish
+</code></pre>
+<p>While it runs, one line keeps count:</p>
+<pre><code>  247/1000 items · about 18m left
+</code></pre>
+<p>And at the end, what each machine actually did:</p>
+<pre><code>  laptop           8 workers · 612 items
+  old-desktop      2 workers · 96 items
+  ec2-worker       4 workers · 292 items
+
+1000/1000 items completed in 22m 41s
+</code></pre>
+<p>Those numbers are measured, not planned. A machine that turns out to be slow
+takes fewer items; one that is free takes more; and nothing sits idle at the
+end waiting for a straggler. Two items are kept in front of every worker, so
+none of them waits for the network between one item and the next.</p>
+<p>This is also why a map of a thousand items does not open a thousand SSH
+connections. It opens one per worker — fourteen, above — and each worker takes
+its items down that single connection.</p>
+<blockquote class="callout callout-tip">
+<p>To use fewer machines at once, or to be gentle on a shared network,
+<code>--jobs 4</code> limits how many workers run at the same time. The rest wait
+their turn.</p>
+<p><code>--static</code> goes back to deciding every worker's share before the run starts,
+in proportion to <code>cpu</code>. It needs no coordination and gives the same items to
+the same workers every time, at the cost of finishing no faster than its
+slowest share.</p>
+</blockquote>
+<h2>Trying failed items again</h2>
+<p><code>--retry 1</code> gives every failed item a second chance — and hands it to a
+different machine than the one that failed it, because the machine is a common
+reason for the failure:</p>
+<pre><code class="language-bash">shard map &quot;./simulate --seed {i}&quot; --count 1000 --retry 1
+</code></pre>
+<pre><code>  laptop           8 workers · 612 items
+  ec2-worker       4 workers · 392 items
+  7 items tried again
+
+1000/1000 items completed in 22m 41s
+</code></pre>
+<p>An item that fails every attempt is counted as failed; the rest of the run is
+unaffected. If a machine drops out entirely — the connection dies, someone
+closes the lid — the items it was holding go back into the queue and the other
+machines pick them up.</p>
+<h2>When an item fails</h2>
+<p>The other items carry on. The run is reported as failed and the count says how
+many:</p>
+<pre><code>  laptop           8 workers · 612 items
+  2 of 1000 items failed
+
+998/1000 items completed in 22m 41s, 2 failed
+</code></pre>
+<p>Which items failed is in the logs — your command's own messages, exactly as it
+printed them, in the log of the worker that ran them:</p>
+<pre><code class="language-bash">shard logs last --node laptop-3
+</code></pre>
+<h2>Making the numbers mean something</h2>
+<p><code>{i}</code> is a plain number, so anything you can compute from a number works:</p>
+<pre><code class="language-bash"># every file in a numbered set
+shard map &quot;convert frames/frame{i}.png -resize 50% out/frame{i}.png&quot; --count 500
+
+# a parameter sweep, computed in the shell
+shard map &quot;./train --lr \$(echo '0.001 * {i}' | bc)&quot; --count 20 --start 1
+</code></pre>
+<p>Quote the command so your own shell leaves <code>$</code> and <code>{}</code> alone, as above.</p>
+<h2>Letting shard pick how many workers</h2>
+<p>By default each machine runs as many workers as the <code>cpu</code> you gave it in
+<code>cluster.toml</code>. <code>--balance</code> measures the machines first and sizes each one to
+the cores it has <strong>free right now</strong>, so a machine already busy with something
+else takes fewer:</p>
+<pre><code class="language-bash">shard map &quot;python3 sim.py --seed {i}&quot; --count 1000 --on cpu --balance --with sim.py
+</code></pre>
+<pre><code>measuring load…
+  ● laptop: 6 of 8 cores free → 6 workers
+  ● old-desktop: 2 of 2 cores free → 2 workers
+  ○ ec2-worker skipped (offline)
+1000 items across 2 nodes, 8 workers, handed out as they finish
+</code></pre>
+<p>It uses the machine's real core count, not the number you wrote, and a machine
+that does not answer is dropped from the run rather than failing every item on
+it. The measurement is one quick round trip before the work starts.</p>
+<p><code>--balance</code> and dynamic dispatch work towards the same thing from two ends: one
+decides how many workers to start on each machine, the other keeps feeding
+whichever workers are quickest. Together they mean you rarely have to tune the
+<code>cpu</code> numbers by hand.</p>
+<h2>When not to use it</h2>
+<p>If each item takes milliseconds, the round trip that asks for the next one
+costs more than the item does. Map earns its keep when items take seconds or
+minutes; below that, hand out bigger pieces of work instead.</p>
+<p>If the items are all different commands rather than one command with a
+changing number, you want <a href="/shard/guide/sharing-work/">Sharing work out</a> instead:
+put them in a file, one per line, and use <code>--distribute</code>.</p>
+
+            </article>
+            <nav class="post-nav">
+                <a class="prev" href="/shard/guide/sharing-work/">Sharing work out</a>
+                <a class="next" href="/shard/guide/pipelines/">Steps and pipelines</a>
+            </nav>
+            <a class="edit" href="">Edit this page</a>
+        </main>
+    </div>
+    <script>
+    (function () {
+        var here = location.pathname;
+        document.querySelectorAll('.sidebar > ul a').forEach(function (a) {
+            if (a.getAttribute('href') === here) a.classList.add('active');
+        });
+
+        var root = document.documentElement;
+        var button = document.querySelector('.theme-toggle');
+        if (button) button.addEventListener('click', function () {
+            /* No stored choice yet means we are following the system. */
+            var now = root.getAttribute('data-theme') ||
+                (matchMedia('(prefers-color-scheme: dark)').matches
+                    ? 'dark' : 'light');
+            var next = now === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queueing jobs</title>
+    <meta name="description" content="More jobs than patience — line them up and walk away">
+    <link rel="stylesheet" href="/shard/style.css">
+    <script>
+    /* Runs before the first paint, so a reader who chose a scheme never
+       sees the other one flash first. */
+    (function () {
+        var t = localStorage.getItem('theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/shard/">shard</a>
+        <span class="version">0.1.0</span>
+        <button class="theme-toggle" type="button"
+                aria-label="Switch between light and dark">
+            <span class="in-light">Dark</span>
+            <span class="in-dark">Light</span>
+        </button>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <ul><li><a href="/shard/introduction/">Introduction</a></li><li><a href="/shard/installation/">Installation</a></li><li><a href="/shard/quick-start/">Quick start</a></li><li><a href="/shard/guide/">Guide</a><ul><li><a href="/shard/guide/cluster-file/">The cluster file</a></li><li><a href="/shard/guide/shipping-code/">Shipping your code</a></li><li><a href="/shard/guide/running-commands/">Running commands</a></li><li><a href="/shard/guide/sharing-work/">Sharing work out</a></li><li><a href="/shard/guide/many-runs/">Running one thing many times</a></li><li><a href="/shard/guide/pipelines/">Steps and pipelines</a></li><li><a href="/shard/guide/tasks-file/">Named jobs</a></li><li><a href="/shard/guide/queue/">Queueing jobs</a></li><li><a href="/shard/guide/logs-and-history/">Logs and history</a></li><li><a href="/shard/guide/web-dashboard/">The web dashboard</a></li><li><a href="/shard/guide/terminal-dashboard/">The terminal dashboard</a></li></ul></li><li><a href="/shard/examples/">Example workloads</a></li><li><a href="/shard/reference/">Reference</a><ul><li><a href="/shard/reference/commands/">Commands</a></li><li><a href="/shard/reference/cluster-toml/">cluster.toml</a></li><li><a href="/shard/reference/tasks-toml/">tasks.toml</a></li><li><a href="/shard/reference/files/">Files and exit codes</a></li></ul></li><li><a href="/shard/troubleshooting/">Troubleshooting</a></li><li><a href="/shard/whats-next/">What is not here yet</a></li></ul>
+            <footer class="site-footer"><a href="https://github.com/yavuzselimsahin/atomik-ssg">Generated with atomik-ssg</a></footer>
+        </aside>
+        <main>
+            <article>
+                <h1>Queueing jobs</h1>
+                <p><code>shard run</code> and <code>shard map</code> run one job and hand the terminal back. When you
+have several jobs to get through — a few maps, a build, an overnight batch —
+you do not want to start each one by hand as the last finishes. The queue does
+that for you.</p>
+<pre><code class="language-bash">shard queue add -- map &quot;python3 sim.py --seed {i}&quot; --count 1000 --on cpu --with sim.py
+shard queue add -- run nightly-report
+shard queue run
+</code></pre>
+<p><code>queue run</code> works through the jobs one at a time and stops when the queue is
+empty. One at a time is deliberate: each job already spreads itself across the
+whole cluster, so running two at once would just make them fight for the same
+machines.</p>
+<h2>Saying what matters more</h2>
+<p>A job's priority decides where it lands in the line. Higher runs first; the
+default is 0.</p>
+<pre><code class="language-bash">shard queue add --priority 10 --name urgent -- run deploy
+shard queue add --priority 1  --name nightly -- run backup
+</code></pre>
+<p>Within the same priority it is first-in, first-out. <code>--name</code> gives a job a
+label so the listing and the run are easy to read.</p>
+<pre><code class="language-bash">shard queue list
+</code></pre>
+<pre><code>3 jobs waiting, in the order they will run:
+
+PRI           ADDED               COMMAND
+10   urgent   2026-08-23 18:48:41 run deploy
+1    nightly  2026-08-23 21:00:12 run backup
+0             2026-08-23 21:03:55 map python3 sim.py --seed {i} --count 1000 …
+</code></pre>
+<p>The order is recomputed every time a job finishes, so a high-priority job you
+add from another terminal while the queue is running jumps ahead of the
+lower-priority ones still waiting — it just does not interrupt the job already
+in progress.</p>
+<h2>It survives everything</h2>
+<p>Each queued job is a small file under <code>~/.shard/queue</code>. The queue is still
+there after you close the terminal, and a job is removed only once it has
+actually run — so if the machine you are on reboots mid-queue, <code>shard queue run</code> picks up where it left off.</p>
+<p>Each job also remembers the directory it was added in, and runs there. Relative
+paths and <code>--with</code> files resolve the way they did when you queued the job, no
+matter where you run the queue from.</p>
+<h2>Stopping</h2>
+<p><code>Ctrl-C</code> stops the queue after the job in progress finishes, rather than
+killing it midway. What has not run yet stays queued for next time.</p>
+<p>To stop the moment something fails — useful when later jobs depend on earlier
+ones — use <code>--stop-on-fail</code>:</p>
+<pre><code class="language-bash">shard queue run --stop-on-fail
+</code></pre>
+<p>Without it, a failed job is reported and the queue carries on; the count at the
+end says how many failed.</p>
+<h2>Managing the queue</h2>
+<pre><code class="language-bash">shard queue remove &lt;id&gt;     # drop one job (the id is in `queue list`)
+shard queue clear           # empty the whole queue
+</code></pre>
+<h2>What can be queued</h2>
+<p>Anything you would type after <code>shard</code> except the queue itself: <code>exec</code>,
+<code>exec-script</code>, <code>map</code>, <code>pipeline</code>, <code>run</code>. Put the whole command after <code>--</code>:</p>
+<pre><code class="language-bash">shard queue add --priority 5 -- exec &quot;make -j4&quot; --on build --with Makefile
+shard queue add -- pipeline --step &quot;./build.sh&quot; --on fast --produces out.tar \
+                            --step &quot;./ship.sh out.tar&quot; --on cloud
+</code></pre>
+
+            </article>
+            <nav class="post-nav">
+                <a class="prev" href="/shard/guide/tasks-file/">Named jobs</a>
+                <a class="next" href="/shard/guide/logs-and-history/">Logs and history</a>
+            </nav>
+            <a class="edit" href="">Edit this page</a>
+        </main>
+    </div>
+    <script>
+    (function () {
+        var here = location.pathname;
+        document.querySelectorAll('.sidebar > ul a').forEach(function (a) {
+            if (a.getAttribute('href') === here) a.classList.add('active');
+        });
+
+        var root = document.documentElement;
+        var button = document.querySelector('.theme-toggle');
+        if (button) button.addEventListener('click', function () {
+            /* No stored choice yet means we are following the system. */
+            var now = root.getAttribute('data-theme') ||
+                (matchMedia('(prefers-color-scheme: dark)').matches
+                    ? 'dark' : 'light');
+            var next = now === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    })();
+    </script>
+</body>
+</html>

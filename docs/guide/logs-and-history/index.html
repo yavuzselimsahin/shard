@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logs and history</title>
+    <meta name="description" content="Where the output goes, and how to get it back">
+    <link rel="stylesheet" href="/shard/style.css">
+    <script>
+    /* Runs before the first paint, so a reader who chose a scheme never
+       sees the other one flash first. */
+    (function () {
+        var t = localStorage.getItem('theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/shard/">shard</a>
+        <span class="version">0.1.0</span>
+        <button class="theme-toggle" type="button"
+                aria-label="Switch between light and dark">
+            <span class="in-light">Dark</span>
+            <span class="in-dark">Light</span>
+        </button>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <ul><li><a href="/shard/introduction/">Introduction</a></li><li><a href="/shard/installation/">Installation</a></li><li><a href="/shard/quick-start/">Quick start</a></li><li><a href="/shard/guide/">Guide</a><ul><li><a href="/shard/guide/cluster-file/">The cluster file</a></li><li><a href="/shard/guide/shipping-code/">Shipping your code</a></li><li><a href="/shard/guide/running-commands/">Running commands</a></li><li><a href="/shard/guide/sharing-work/">Sharing work out</a></li><li><a href="/shard/guide/many-runs/">Running one thing many times</a></li><li><a href="/shard/guide/pipelines/">Steps and pipelines</a></li><li><a href="/shard/guide/tasks-file/">Named jobs</a></li><li><a href="/shard/guide/queue/">Queueing jobs</a></li><li><a href="/shard/guide/logs-and-history/">Logs and history</a></li><li><a href="/shard/guide/web-dashboard/">The web dashboard</a></li><li><a href="/shard/guide/terminal-dashboard/">The terminal dashboard</a></li></ul></li><li><a href="/shard/examples/">Example workloads</a></li><li><a href="/shard/reference/">Reference</a><ul><li><a href="/shard/reference/commands/">Commands</a></li><li><a href="/shard/reference/cluster-toml/">cluster.toml</a></li><li><a href="/shard/reference/tasks-toml/">tasks.toml</a></li><li><a href="/shard/reference/files/">Files and exit codes</a></li></ul></li><li><a href="/shard/troubleshooting/">Troubleshooting</a></li><li><a href="/shard/whats-next/">What is not here yet</a></li></ul>
+            <footer class="site-footer"><a href="https://github.com/yavuzselimsahin/atomik-ssg">Generated with atomik-ssg</a></footer>
+        </aside>
+        <main>
+            <article>
+                <h1>Logs and history</h1>
+                <p>Every run is kept on disk. Nothing is thrown away when the command finishes,
+and nothing needs a database.</p>
+<h2>The last run</h2>
+<pre><code class="language-bash">shard logs last
+</code></pre>
+<pre><code>20260822-211013-1490  completed  make -j4
+
+=== laptop ===
+gcc -O2 -c src/main.c
+gcc -O2 -c src/parser.c
+…
+
+=== old-desktop ===
+gcc -O2 -c src/render.c
+…
+</code></pre>
+<p>Output from one machine only:</p>
+<pre><code class="language-bash">shard logs last --node old-desktop
+</code></pre>
+<h2>Earlier runs</h2>
+<pre><code class="language-bash">shard history
+</code></pre>
+<pre><code>TASK                   STATUS      COMMAND                      DURATION  STARTED
+20260822-211013-1496   failed      ./deploy.sh                    10.03s  2026-08-22 21:10:13
+20260822-211013-1490   completed   make -j4                        4.01s  2026-08-22 21:10:13
+20260822-211002-1479   completed   uname -sm                       1.01s  2026-08-22 21:10:02
+</code></pre>
+<p>The first column is the run's id. Pass it to <code>shard logs</code>:</p>
+<pre><code class="language-bash">shard logs 20260822-211013-1490
+</code></pre>
+<p><code>shard history -n 50</code> shows more; the default is 20.</p>
+<h2>What is running now</h2>
+<pre><code class="language-bash">shard status
+</code></pre>
+<p>Runs that are still going are listed with the machines they are using. A run
+whose command was interrupted — you closed the terminal, the laptop slept —
+shows as <code>interrupted</code> rather than pretending to still be alive: shard checks
+whether the process is really there.</p>
+<h2>The files themselves</h2>
+<p>Everything lives under <code>~/.shard/logs</code>, one directory per run:</p>
+<pre><code>~/.shard/logs/20260822-211013-1490/
+├── task.json          what ran, where, how long, and how it ended
+├── laptop.log         everything that machine printed
+└── old-desktop.log
+</code></pre>
+<p>They are plain files. <code>grep</code>, <code>tail -f</code> and your editor all work on them:</p>
+<pre><code class="language-bash">tail -f ~/.shard/logs/20260822-211013-1490/laptop.log
+grep -c FAILED ~/.shard/logs/*/laptop.log
+</code></pre>
+<p>Output is written as it arrives, so following a log while the run is going is
+a perfectly good way to watch it.</p>
+<h2>Housekeeping</h2>
+<p>Nothing expires on its own. To clear old runs:</p>
+<pre><code class="language-bash">rm -rf ~/.shard/logs/2026080*
+</code></pre>
+<p>To keep logs somewhere else — a bigger disk, a shared folder — set <code>log_dir</code>
+in <code>cluster.toml</code>:</p>
+<pre><code class="language-toml">[cluster]
+log_dir = &quot;/mnt/data/shard-logs&quot;
+</code></pre>
+<p>To skip logging entirely for one command, add <code>--no-log</code>. The summary is
+still printed; nothing is written to disk.</p>
+
+            </article>
+            <nav class="post-nav">
+                <a class="prev" href="/shard/guide/queue/">Queueing jobs</a>
+                <a class="next" href="/shard/guide/web-dashboard/">The web dashboard</a>
+            </nav>
+            <a class="edit" href="">Edit this page</a>
+        </main>
+    </div>
+    <script>
+    (function () {
+        var here = location.pathname;
+        document.querySelectorAll('.sidebar > ul a').forEach(function (a) {
+            if (a.getAttribute('href') === here) a.classList.add('active');
+        });
+
+        var root = document.documentElement;
+        var button = document.querySelector('.theme-toggle');
+        if (button) button.addEventListener('click', function () {
+            /* No stored choice yet means we are following the system. */
+            var now = root.getAttribute('data-theme') ||
+                (matchMedia('(prefers-color-scheme: dark)').matches
+                    ? 'dark' : 'light');
+            var next = now === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    })();
+    </script>
+</body>
+</html>

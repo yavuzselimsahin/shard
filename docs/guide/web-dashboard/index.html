@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The web dashboard</title>
+    <meta name="description" content="Watching the cluster in a browser">
+    <link rel="stylesheet" href="/shard/style.css">
+    <script>
+    /* Runs before the first paint, so a reader who chose a scheme never
+       sees the other one flash first. */
+    (function () {
+        var t = localStorage.getItem('theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/shard/">shard</a>
+        <span class="version">0.1.0</span>
+        <button class="theme-toggle" type="button"
+                aria-label="Switch between light and dark">
+            <span class="in-light">Dark</span>
+            <span class="in-dark">Light</span>
+        </button>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <ul><li><a href="/shard/introduction/">Introduction</a></li><li><a href="/shard/installation/">Installation</a></li><li><a href="/shard/quick-start/">Quick start</a></li><li><a href="/shard/guide/">Guide</a><ul><li><a href="/shard/guide/cluster-file/">The cluster file</a></li><li><a href="/shard/guide/shipping-code/">Shipping your code</a></li><li><a href="/shard/guide/running-commands/">Running commands</a></li><li><a href="/shard/guide/sharing-work/">Sharing work out</a></li><li><a href="/shard/guide/many-runs/">Running one thing many times</a></li><li><a href="/shard/guide/pipelines/">Steps and pipelines</a></li><li><a href="/shard/guide/tasks-file/">Named jobs</a></li><li><a href="/shard/guide/queue/">Queueing jobs</a></li><li><a href="/shard/guide/logs-and-history/">Logs and history</a></li><li><a href="/shard/guide/web-dashboard/">The web dashboard</a></li><li><a href="/shard/guide/terminal-dashboard/">The terminal dashboard</a></li></ul></li><li><a href="/shard/examples/">Example workloads</a></li><li><a href="/shard/reference/">Reference</a><ul><li><a href="/shard/reference/commands/">Commands</a></li><li><a href="/shard/reference/cluster-toml/">cluster.toml</a></li><li><a href="/shard/reference/tasks-toml/">tasks.toml</a></li><li><a href="/shard/reference/files/">Files and exit codes</a></li></ul></li><li><a href="/shard/troubleshooting/">Troubleshooting</a></li><li><a href="/shard/whats-next/">What is not here yet</a></li></ul>
+            <footer class="site-footer"><a href="https://github.com/yavuzselimsahin/atomik-ssg">Generated with atomik-ssg</a></footer>
+        </aside>
+        <main>
+            <article>
+                <h1>The web dashboard</h1>
+                <pre><code class="language-bash">shard ui
+</code></pre>
+<pre><code>shard ui — home-lab (3 nodes)
+Open http://localhost:8787  ·  Ctrl-C to stop
+</code></pre>
+<p>The dashboard is part of the same binary. There is nothing to install, no
+<code>npm</code>, and no server to keep running — start it when you want it, stop it with
+Ctrl-C.</p>
+<h2>What it shows</h2>
+<p><strong>Nodes.</strong> Every machine in <code>cluster.toml</code>, with its address, tags and — after
+a health check — how busy it is. The <strong>Check health</strong> button runs the same
+check <code>shard cluster health</code> does and updates the bars.</p>
+<p><strong>Running.</strong> Anything happening right now, machine by machine, refreshed every
+two seconds. Runs you started in a terminal appear here: the dashboard reads
+the same log directory.</p>
+<p>A run made of items — a <code>map</code>, or a distributed script — shows a real
+progress bar: how many of the thousand are done, how many failed, and roughly
+how long is left.</p>
+<p><strong>Recent runs.</strong> The last 25 runs, newest first. Click one to see its
+machines; click a machine to read its output, which keeps updating while the
+run is going.</p>
+<h2>It only reads</h2>
+<p>The dashboard cannot start work. It shows what is happening and what has
+happened; you start runs from the terminal. That keeps the browser page
+harmless — a stray click cannot launch anything on twelve machines.</p>
+<p>The one thing it can do is run a health check, because that is a read too.</p>
+<h2>Who can reach it</h2>
+<p>The server listens on <code>localhost</code> only. Other machines on your network cannot
+connect to it, and neither can anything on the internet. That is deliberate:
+the page shows your machines and your command output.</p>
+<p>To watch it from another computer, forward the port over SSH rather than
+opening it up:</p>
+<pre><code class="language-bash">ssh -L 8787:localhost:8787 you@the-machine-running-shard
+</code></pre>
+<p>Then open <a href="http://localhost:8787">http://localhost:8787</a> on your own computer.</p>
+<h2>Or without a browser</h2>
+<p><code>shard tui</code> shows the same thing in the terminal, which is usually easier over
+SSH — see <a href="/shard/guide/terminal-dashboard/">The terminal dashboard</a>.</p>
+<h2>A different port</h2>
+<pre><code class="language-bash">shard ui 9000
+</code></pre>
+<h2>While it is running</h2>
+<p>The dashboard reads <code>cluster.toml</code> when it starts. If you add a machine to the
+file, stop it with Ctrl-C and start it again to see the change.</p>
+
+            </article>
+            <nav class="post-nav">
+                <a class="prev" href="/shard/guide/logs-and-history/">Logs and history</a>
+                <a class="next" href="/shard/guide/terminal-dashboard/">The terminal dashboard</a>
+            </nav>
+            <a class="edit" href="">Edit this page</a>
+        </main>
+    </div>
+    <script>
+    (function () {
+        var here = location.pathname;
+        document.querySelectorAll('.sidebar > ul a').forEach(function (a) {
+            if (a.getAttribute('href') === here) a.classList.add('active');
+        });
+
+        var root = document.documentElement;
+        var button = document.querySelector('.theme-toggle');
+        if (button) button.addEventListener('click', function () {
+            /* No stored choice yet means we are following the system. */
+            var now = root.getAttribute('data-theme') ||
+                (matchMedia('(prefers-color-scheme: dark)').matches
+                    ? 'dark' : 'light');
+            var next = now === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    })();
+    </script>
+</body>
+</html>

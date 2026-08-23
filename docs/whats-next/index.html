@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What is not here yet</title>
+    <meta name="description" content="The honest list">
+    <link rel="stylesheet" href="/shard/style.css">
+    <script>
+    /* Runs before the first paint, so a reader who chose a scheme never
+       sees the other one flash first. */
+    (function () {
+        var t = localStorage.getItem('theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/shard/">shard</a>
+        <span class="version">0.1.0</span>
+        <button class="theme-toggle" type="button"
+                aria-label="Switch between light and dark">
+            <span class="in-light">Dark</span>
+            <span class="in-dark">Light</span>
+        </button>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <ul><li><a href="/shard/introduction/">Introduction</a></li><li><a href="/shard/installation/">Installation</a></li><li><a href="/shard/quick-start/">Quick start</a></li><li><a href="/shard/guide/">Guide</a><ul><li><a href="/shard/guide/cluster-file/">The cluster file</a></li><li><a href="/shard/guide/shipping-code/">Shipping your code</a></li><li><a href="/shard/guide/running-commands/">Running commands</a></li><li><a href="/shard/guide/sharing-work/">Sharing work out</a></li><li><a href="/shard/guide/many-runs/">Running one thing many times</a></li><li><a href="/shard/guide/pipelines/">Steps and pipelines</a></li><li><a href="/shard/guide/tasks-file/">Named jobs</a></li><li><a href="/shard/guide/queue/">Queueing jobs</a></li><li><a href="/shard/guide/logs-and-history/">Logs and history</a></li><li><a href="/shard/guide/web-dashboard/">The web dashboard</a></li><li><a href="/shard/guide/terminal-dashboard/">The terminal dashboard</a></li></ul></li><li><a href="/shard/examples/">Example workloads</a></li><li><a href="/shard/reference/">Reference</a><ul><li><a href="/shard/reference/commands/">Commands</a></li><li><a href="/shard/reference/cluster-toml/">cluster.toml</a></li><li><a href="/shard/reference/tasks-toml/">tasks.toml</a></li><li><a href="/shard/reference/files/">Files and exit codes</a></li></ul></li><li><a href="/shard/troubleshooting/">Troubleshooting</a></li><li><a href="/shard/whats-next/">What is not here yet</a></li></ul>
+            <footer class="site-footer"><a href="https://github.com/yavuzselimsahin/atomik-ssg">Generated with atomik-ssg</a></footer>
+        </aside>
+        <main>
+            <article>
+                <h1>What is not here yet</h1>
+                <p>This is version 0.1. It does one thing properly — run commands on machines you
+reach over SSH — and the rest is still ahead. Knowing the difference saves you
+looking for something that is not there.</p>
+<h2>Works today</h2>
+<ul>
+<li>A cluster described in one file, mixing home and cloud machines freely.</li>
+<li><code>shard exec</code>: the same command on every selected machine, in parallel.</li>
+<li><code>shard exec-script --distribute</code>: one list of jobs, split by machine capacity.</li>
+<li><code>shard map</code>: one command run many times with a changing number, spread over
+every core you own.</li>
+<li><code>shard pipeline</code>: different commands in order, each on a machine of its own,
+stopping at the first failure — or side by side with <code>--parallel</code>.</li>
+<li><code>tasks.toml</code> and <code>shard run &lt;name&gt;</code>: the work you repeat, written down.</li>
+<li>Work handed out as machines finish, so a slow machine takes less rather than
+holding up the run.</li>
+<li><code>--retry</code>, which gives a failed job or item another go — a failed item on a
+different machine than the one that failed it.</li>
+<li><code>produces</code>, which carries a step's files to the machine the next step runs
+on.</li>
+<li>Two dashboards over the same log directory: one in a browser, one in the
+terminal.</li>
+<li><code>--with</code>, which ships your own code to the machines so they can run a job
+they have never seen.</li>
+<li><code>--balance</code>, which measures live load and places work on the machines that
+are actually free.</li>
+<li>A priority queue, so several jobs can be lined up and run in the order that
+matters to you.</li>
+<li>Health checks with load and memory.</li>
+<li>Logs, history and per-machine output on disk.</li>
+<li>The read-only web dashboard.</li>
+</ul>
+<h2>Not yet</h2>
+<p><strong>An agent.</strong> Everything today is a fresh SSH connection per job. A small
+program running on each machine would make queuing, health monitoring and
+reconnection cheaper, at the cost of having something to install.</p>
+<p><strong>Placement by real load, always on.</strong> <code>--balance</code> measures load when you ask
+for it; without it, placement still uses the <code>cpu</code> number you wrote. Making the
+measurement continuous — so a long run notices a machine getting busy partway
+through — is not done.</p>
+<p><strong>Files between machines directly.</strong> What a step produces travels through this
+machine in two hops. Two cloud machines that can reach each other could pass
+it across in one.</p>
+<p><strong>Cloud provisioning.</strong> shard uses machines; it does not create them. Creating
+and destroying cloud machines from the command line is planned, deliberately
+after everything above.</p>
+<h2>Things it will not do</h2>
+<p>It will not become a container orchestrator, a real-time scheduler, or a
+distributed filesystem. Those exist, they are good, and they are large. The
+point of shard is to stay small enough to read.</p>
+
+            </article>
+            <nav class="post-nav">
+                <a class="prev" href="/shard/troubleshooting/">Troubleshooting</a>
+                <a class="next" href=""></a>
+            </nav>
+            <a class="edit" href="">Edit this page</a>
+        </main>
+    </div>
+    <script>
+    (function () {
+        var here = location.pathname;
+        document.querySelectorAll('.sidebar > ul a').forEach(function (a) {
+            if (a.getAttribute('href') === here) a.classList.add('active');
+        });
+
+        var root = document.documentElement;
+        var button = document.querySelector('.theme-toggle');
+        if (button) button.addEventListener('click', function () {
+            /* No stored choice yet means we are following the system. */
+            var now = root.getAttribute('data-theme') ||
+                (matchMedia('(prefers-color-scheme: dark)').matches
+                    ? 'dark' : 'light');
+            var next = now === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    })();
+    </script>
+</body>
+</html>

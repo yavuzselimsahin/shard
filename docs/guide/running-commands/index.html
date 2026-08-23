@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Running commands</title>
+    <meta name="description" content="shard exec, and choosing what runs where">
+    <link rel="stylesheet" href="/shard/style.css">
+    <script>
+    /* Runs before the first paint, so a reader who chose a scheme never
+       sees the other one flash first. */
+    (function () {
+        var t = localStorage.getItem('theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/shard/">shard</a>
+        <span class="version">0.1.0</span>
+        <button class="theme-toggle" type="button"
+                aria-label="Switch between light and dark">
+            <span class="in-light">Dark</span>
+            <span class="in-dark">Light</span>
+        </button>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <ul><li><a href="/shard/introduction/">Introduction</a></li><li><a href="/shard/installation/">Installation</a></li><li><a href="/shard/quick-start/">Quick start</a></li><li><a href="/shard/guide/">Guide</a><ul><li><a href="/shard/guide/cluster-file/">The cluster file</a></li><li><a href="/shard/guide/shipping-code/">Shipping your code</a></li><li><a href="/shard/guide/running-commands/">Running commands</a></li><li><a href="/shard/guide/sharing-work/">Sharing work out</a></li><li><a href="/shard/guide/many-runs/">Running one thing many times</a></li><li><a href="/shard/guide/pipelines/">Steps and pipelines</a></li><li><a href="/shard/guide/tasks-file/">Named jobs</a></li><li><a href="/shard/guide/queue/">Queueing jobs</a></li><li><a href="/shard/guide/logs-and-history/">Logs and history</a></li><li><a href="/shard/guide/web-dashboard/">The web dashboard</a></li><li><a href="/shard/guide/terminal-dashboard/">The terminal dashboard</a></li></ul></li><li><a href="/shard/examples/">Example workloads</a></li><li><a href="/shard/reference/">Reference</a><ul><li><a href="/shard/reference/commands/">Commands</a></li><li><a href="/shard/reference/cluster-toml/">cluster.toml</a></li><li><a href="/shard/reference/tasks-toml/">tasks.toml</a></li><li><a href="/shard/reference/files/">Files and exit codes</a></li></ul></li><li><a href="/shard/troubleshooting/">Troubleshooting</a></li><li><a href="/shard/whats-next/">What is not here yet</a></li></ul>
+            <footer class="site-footer"><a href="https://github.com/yavuzselimsahin/atomik-ssg">Generated with atomik-ssg</a></footer>
+        </aside>
+        <main>
+            <article>
+                <h1>Running commands</h1>
+                <pre><code class="language-bash">shard exec &quot;&lt;command&gt;&quot; [--on &lt;where&gt;]
+</code></pre>
+<p>The command is run by the shell on each machine, so pipes, redirects and
+<code>&amp;&amp;</code> all work — quote the whole thing so your own shell leaves it alone.</p>
+<pre><code class="language-bash">shard exec &quot;df -h / | tail -1&quot; --on all
+</code></pre>
+<h2>Choosing machines</h2>
+<p><code>--on</code> takes a name, a tag, several of either separated by commas, or <code>all</code>:</p>
+<pre><code class="language-bash">shard exec &quot;uptime&quot; --on all                 # everything in the file
+shard exec &quot;uptime&quot; --on cloud               # every machine tagged cloud
+shard exec &quot;uptime&quot; --on laptop              # one machine
+shard exec &quot;uptime&quot; --on laptop,ec2-worker   # two of them
+</code></pre>
+<p>Left out, <code>--on all</code> is assumed. If nothing matches, shard tells you and does
+nothing — a typo in a tag never silently runs on everything.</p>
+<h2>Reading the result</h2>
+<pre><code>[laptop]       make -j4                         ✓ completed (2m 14s)
+[old-desktop]  make -j4                         ✓ completed (5m 03s)
+[ec2-worker]   make -j4                         ✗ failed (exit 2) (1m 47s)
+
+2/3 succeeded in 5m 03s
+Total machine time: 9m 04s (44% faster than one after another)
+Logs: shard logs 20260822-211013-1490
+</code></pre>
+<p>One line per machine, printed the moment that machine finishes. Underneath:
+how many succeeded, how long the whole thing took, and how much time it would
+have taken one machine after another.</p>
+<p><code>shard exec</code> exits with status 1 if any machine failed, so it drops into a
+script or a CI job without further work.</p>
+<h2>Watching output as it arrives</h2>
+<p>By default the output goes to the log files and the terminal stays quiet. To
+see it live, with each line labelled by the machine it came from:</p>
+<pre><code class="language-bash">shard exec &quot;make -j4&quot; --on build --stream
+</code></pre>
+<pre><code>[laptop]       gcc -O2 -c src/main.c
+[old-desktop]  gcc -O2 -c src/parser.c
+[laptop]       gcc -O2 -c src/render.c
+</code></pre>
+<p>With more than two or three talkative machines this gets busy. The logs are
+still written either way, so <code>--stream</code> is about watching, not about keeping.</p>
+<h2>Not waiting forever</h2>
+<p>A machine that hangs holds up the whole run. Give it a limit:</p>
+<pre><code class="language-bash">shard exec &quot;./flaky-job.sh&quot; --timeout 300
+</code></pre>
+<p>After 300 seconds that machine's job is killed — along with anything it
+started — and reported as timed out. The other machines carry on.</p>
+<h2>Not running everything at once</h2>
+<p>By default every selected machine starts immediately. To keep the number of
+simultaneous jobs down, for instance because they all pull from the same
+network share:</p>
+<pre><code class="language-bash">shard exec &quot;./sync.sh&quot; --on all --jobs 2
+</code></pre>
+<h2>Trying again</h2>
+<p>Some failures are not about your command: a machine that was asleep, a network
+that blinked, a package server that timed out. <code>--retry</code> gives a failed job
+another go:</p>
+<pre><code class="language-bash">shard exec &quot;./flaky-sync.sh&quot; --on all --retry 2
+</code></pre>
+<pre><code>[old-desktop]  ./flaky-sync.sh   ✗ failed (exit 1) (0.40s) ↺ trying again
+[old-desktop]  ./flaky-sync.sh   ✓ completed (12.10s)
+</code></pre>
+<p>Both attempts are kept in the log, one after the other, so you can see what
+went wrong the first time. Nothing is retried unless you ask: a command that
+half-finished before failing may not be safe to run twice, and shard cannot
+know that.</p>
+<h2>Looking before leaping</h2>
+<p><code>--dry-run</code> prints the exact command line shard would run for each machine,
+and runs nothing:</p>
+<pre><code class="language-bash">shard exec &quot;rm -rf build&quot; --on all --dry-run
+</code></pre>
+<pre><code>[laptop] /bin/sh -c rm -rf build
+[old-desktop] ssh -o BatchMode=yes … yavuz@192.168.1.15 rm -rf build
+</code></pre>
+<p>This is worth doing before anything destructive. There is no undo across
+twelve machines.</p>
+<h2>Running a script instead of a command</h2>
+<p>If the work is longer than one line, put it in a file:</p>
+<pre><code class="language-bash">shard exec-script setup.sh --on all
+</code></pre>
+<p>The file is piped to each machine's shell over the same SSH connection.
+Nothing is copied to disk on the far side and nothing is left behind.</p>
+<p>That works because the shell reads the whole script from the connection. A
+command that runs a <em>file</em> — <code>python3 sim.py</code> — needs that file on the machine
+first; <a href="/shard/guide/shipping-code/"><code>--with</code></a> sends it along.</p>
+<p>To split the work between machines rather than repeat it on each, see
+<a href="/shard/guide/sharing-work/">Sharing work out</a>.</p>
+
+            </article>
+            <nav class="post-nav">
+                <a class="prev" href="/shard/guide/shipping-code/">Shipping your code</a>
+                <a class="next" href="/shard/guide/sharing-work/">Sharing work out</a>
+            </nav>
+            <a class="edit" href="">Edit this page</a>
+        </main>
+    </div>
+    <script>
+    (function () {
+        var here = location.pathname;
+        document.querySelectorAll('.sidebar > ul a').forEach(function (a) {
+            if (a.getAttribute('href') === here) a.classList.add('active');
+        });
+
+        var root = document.documentElement;
+        var button = document.querySelector('.theme-toggle');
+        if (button) button.addEventListener('click', function () {
+            /* No stored choice yet means we are following the system. */
+            var now = root.getAttribute('data-theme') ||
+                (matchMedia('(prefers-color-scheme: dark)').matches
+                    ? 'dark' : 'light');
+            var next = now === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    })();
+    </script>
+</body>
+</html>

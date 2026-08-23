@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}}</title>
+    <meta name="description" content="{{description}}">
+    <link rel="stylesheet" href="{{base_path}}/style.css">
+</head>
+<body>
+    <header>
+        <h1>{{title}}</h1>
+        <p>{{description}}</p>
+        <nav class="site-nav"><ul>{{pages}}</ul></nav>
+    </header>
+    <main>
+        <ul class="post-list">
+{{post_items}}
+        </ul>
+    </main>
+    <footer class="site-footer">{{built_with}}</footer>
+</body>
+</html>

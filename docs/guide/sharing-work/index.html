@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sharing work out</title>
+    <meta name="description" content="One list of jobs, split across your machines">
+    <link rel="stylesheet" href="/shard/style.css">
+    <script>
+    /* Runs before the first paint, so a reader who chose a scheme never
+       sees the other one flash first. */
+    (function () {
+        var t = localStorage.getItem('theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/shard/">shard</a>
+        <span class="version">0.1.0</span>
+        <button class="theme-toggle" type="button"
+                aria-label="Switch between light and dark">
+            <span class="in-light">Dark</span>
+            <span class="in-dark">Light</span>
+        </button>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <ul><li><a href="/shard/introduction/">Introduction</a></li><li><a href="/shard/installation/">Installation</a></li><li><a href="/shard/quick-start/">Quick start</a></li><li><a href="/shard/guide/">Guide</a><ul><li><a href="/shard/guide/cluster-file/">The cluster file</a></li><li><a href="/shard/guide/shipping-code/">Shipping your code</a></li><li><a href="/shard/guide/running-commands/">Running commands</a></li><li><a href="/shard/guide/sharing-work/">Sharing work out</a></li><li><a href="/shard/guide/many-runs/">Running one thing many times</a></li><li><a href="/shard/guide/pipelines/">Steps and pipelines</a></li><li><a href="/shard/guide/tasks-file/">Named jobs</a></li><li><a href="/shard/guide/queue/">Queueing jobs</a></li><li><a href="/shard/guide/logs-and-history/">Logs and history</a></li><li><a href="/shard/guide/web-dashboard/">The web dashboard</a></li><li><a href="/shard/guide/terminal-dashboard/">The terminal dashboard</a></li></ul></li><li><a href="/shard/examples/">Example workloads</a></li><li><a href="/shard/reference/">Reference</a><ul><li><a href="/shard/reference/commands/">Commands</a></li><li><a href="/shard/reference/cluster-toml/">cluster.toml</a></li><li><a href="/shard/reference/tasks-toml/">tasks.toml</a></li><li><a href="/shard/reference/files/">Files and exit codes</a></li></ul></li><li><a href="/shard/troubleshooting/">Troubleshooting</a></li><li><a href="/shard/whats-next/">What is not here yet</a></li></ul>
+            <footer class="site-footer"><a href="https://github.com/yavuzselimsahin/atomik-ssg">Generated with atomik-ssg</a></footer>
+        </aside>
+        <main>
+            <article>
+                <h1>Sharing work out</h1>
+                <p>Running the same command everywhere is useful for maintenance. For work that
+takes a long time, you usually want the opposite: one list of jobs, divided
+between the machines so each does a part of it.</p>
+<pre><code class="language-bash">shard exec-script tests.sh --distribute
+</code></pre>
+<h2>The work list</h2>
+<p>The file is a list of commands, one per line:</p>
+<pre><code class="language-sh"># tests.sh — one line, one piece of work
+pytest tests/unit -k parser
+pytest tests/unit -k render
+pytest tests/unit -k config
+pytest tests/integration -k http
+pytest tests/integration -k ssh
+pytest tests/slow -k migration
+</code></pre>
+<p>Blank lines and lines starting with <code>#</code> are ignored. Everything else is a
+piece of work that will run exactly once, on one machine.</p>
+<h2>How the work is shared out</h2>
+<p>Nothing is decided in advance. Each machine is given a line, and when it
+reports back that the line is done it is given the next one:</p>
+<pre><code class="language-bash">shard exec-script tests.sh --distribute --on cpu
+</code></pre>
+<pre><code>tests.sh: 6 commands across 2 nodes, handed out as they finish
+[laptop]       tests.sh                         ✓ completed (1m 44s)
+[old-desktop]  tests.sh                         ✓ completed (1m 41s)
+
+  laptop           1 worker  · 4 items
+  old-desktop      1 worker  · 2 items
+
+6/6 items completed in 1m 44s
+</code></pre>
+<p>The counts at the end are what each machine actually did, not what it was
+promised. A machine that turns out to be twice as fast simply asks for twice
+as much, and none of them sit idle while another finishes a long line. You do
+not have to guess capacity correctly in <code>cluster.toml</code> for this to work.</p>
+<p>While it runs, a single line at the bottom of the terminal keeps count:</p>
+<pre><code>  17/60 items · about 2m 30s left
+</code></pre>
+<h2>When a line fails</h2>
+<p>The other lines carry on. shard counts the failures, reports the run as
+failed, and exits with status 1:</p>
+<pre><code>  laptop           1 worker  · 4 items
+  old-desktop      1 worker  · 2 items
+  2 of 6 items failed
+
+4/6 items completed in 1m 44s, 2 failed
+</code></pre>
+<p>For a test suite that is usually what you want: one broken test should not
+hide the state of the others.</p>
+<h2>--static, when you want the old certainty</h2>
+<p><code>--static</code> decides the shares before anything runs, in proportion to the <code>cpu</code>
+you gave each machine, and sends each machine its share as one script:</p>
+<pre><code class="language-bash">shard exec-script tests.sh --distribute --static
+</code></pre>
+<pre><code>tests.sh: 6 commands across 2 nodes
+  laptop           lines 1-4 (4)
+  old-desktop      lines 5-6 (2)
+</code></pre>
+<p>Two differences worth knowing:</p>
+<ul>
+<li>The split is fixed, so a machine that turns out to be slow holds up the run.</li>
+<li>Each machine's share runs with <code>set -e</code>: its first failure skips the rest of
+<em>its</em> lines.</li>
+</ul>
+<p>It is the right choice when you want the run reproducible — the same machine
+gets the same lines every time — or when the machines cannot talk back for
+some reason. Otherwise the default balances better.</p>
+<h2>The other shape of this</h2>
+<p><code>--distribute</code> is for a list of different commands. When it is one command
+repeated with a changing number — a thousand seeds, three hundred frames —
+<a href="/shard/guide/many-runs/"><code>shard map</code></a> says it in one line:</p>
+<pre><code class="language-bash">shard map &quot;./simulate --seed {i}&quot; --count 1000
+</code></pre>
+<h2>A rule of thumb</h2>
+<p>Distributing helps when the work is longer than the connection overhead. A
+few seconds per line is plenty. Splitting six commands that each take 20
+milliseconds across four machines will be slower than running them here, and
+that is fine — the tool is for the other case.</p>
+
+            </article>
+            <nav class="post-nav">
+                <a class="prev" href="/shard/guide/running-commands/">Running commands</a>
+                <a class="next" href="/shard/guide/many-runs/">Running one thing many times</a>
+            </nav>
+            <a class="edit" href="">Edit this page</a>
+        </main>
+    </div>
+    <script>
+    (function () {
+        var here = location.pathname;
+        document.querySelectorAll('.sidebar > ul a').forEach(function (a) {
+            if (a.getAttribute('href') === here) a.classList.add('active');
+        });
+
+        var root = document.documentElement;
+        var button = document.querySelector('.theme-toggle');
+        if (button) button.addEventListener('click', function () {
+            /* No stored choice yet means we are following the system. */
+            var now = root.getAttribute('data-theme') ||
+                (matchMedia('(prefers-color-scheme: dark)').matches
+                    ? 'dark' : 'light');
+            var next = now === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    })();
+    </script>
+</body>
+</html>

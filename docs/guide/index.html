@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guide</title>
+    <meta name="description" content="How to use shard day to day">
+    <link rel="stylesheet" href="/shard/style.css">
+    <script>
+    /* Runs before the first paint, so a reader who chose a scheme never
+       sees the other one flash first. */
+    (function () {
+        var t = localStorage.getItem('theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/shard/">shard</a>
+        <span class="version">0.1.0</span>
+        <button class="theme-toggle" type="button"
+                aria-label="Switch between light and dark">
+            <span class="in-light">Dark</span>
+            <span class="in-dark">Light</span>
+        </button>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <ul><li><a href="/shard/introduction/">Introduction</a></li><li><a href="/shard/installation/">Installation</a></li><li><a href="/shard/quick-start/">Quick start</a></li><li><a href="/shard/guide/">Guide</a><ul><li><a href="/shard/guide/cluster-file/">The cluster file</a></li><li><a href="/shard/guide/shipping-code/">Shipping your code</a></li><li><a href="/shard/guide/running-commands/">Running commands</a></li><li><a href="/shard/guide/sharing-work/">Sharing work out</a></li><li><a href="/shard/guide/many-runs/">Running one thing many times</a></li><li><a href="/shard/guide/pipelines/">Steps and pipelines</a></li><li><a href="/shard/guide/tasks-file/">Named jobs</a></li><li><a href="/shard/guide/queue/">Queueing jobs</a></li><li><a href="/shard/guide/logs-and-history/">Logs and history</a></li><li><a href="/shard/guide/web-dashboard/">The web dashboard</a></li><li><a href="/shard/guide/terminal-dashboard/">The terminal dashboard</a></li></ul></li><li><a href="/shard/examples/">Example workloads</a></li><li><a href="/shard/reference/">Reference</a><ul><li><a href="/shard/reference/commands/">Commands</a></li><li><a href="/shard/reference/cluster-toml/">cluster.toml</a></li><li><a href="/shard/reference/tasks-toml/">tasks.toml</a></li><li><a href="/shard/reference/files/">Files and exit codes</a></li></ul></li><li><a href="/shard/troubleshooting/">Troubleshooting</a></li><li><a href="/shard/whats-next/">What is not here yet</a></li></ul>
+            <footer class="site-footer"><a href="https://github.com/yavuzselimsahin/atomik-ssg">Generated with atomik-ssg</a></footer>
+        </aside>
+        <main>
+            <article>
+                <h1>Guide</h1>
+                <p>The <a href="/shard/quick-start/">Quick start</a> gets one command running. This section covers
+the rest: describing your machines, choosing which of them to use, splitting a
+long list of work between them, and finding what happened afterwards.</p>
+<p>Read it in order, or jump to what you need:</p>
+<ul>
+<li><a href="/shard/guide/cluster-file/">The cluster file</a> — every option a machine can have.</li>
+<li><a href="/shard/guide/shipping-code/">Shipping your code</a> — running a script on machines
+that do not have it yet.</li>
+<li><a href="/shard/guide/running-commands/">Running commands</a> — <code>shard exec</code> and its options.</li>
+<li><a href="/shard/guide/sharing-work/">Sharing work out</a> — one job list, several machines.</li>
+<li><a href="/shard/guide/many-runs/">Running one thing many times</a> — the same command with a
+changing number.</li>
+<li><a href="/shard/guide/pipelines/">Steps and pipelines</a> — different commands, in order or
+side by side.</li>
+<li><a href="/shard/guide/tasks-file/">Named jobs</a> — <code>tasks.toml</code>, so you type the name
+instead of the command.</li>
+<li><a href="/shard/guide/queue/">Queueing jobs</a> — line several up and let them run in
+priority order.</li>
+<li><a href="/shard/guide/logs-and-history/">Logs and history</a> — where the output goes.</li>
+<li><a href="/shard/guide/web-dashboard/">The web dashboard</a> — watching a run in a browser.</li>
+<li><a href="/shard/guide/terminal-dashboard/">The terminal dashboard</a> — the same, without
+leaving the terminal.</li>
+</ul>
+
+            </article>
+            <nav class="post-nav">
+                <a class="prev" href="/shard/quick-start/">Quick start</a>
+                <a class="next" href="/shard/guide/cluster-file/">The cluster file</a>
+            </nav>
+            <a class="edit" href="">Edit this page</a>
+        </main>
+    </div>
+    <script>
+    (function () {
+        var here = location.pathname;
+        document.querySelectorAll('.sidebar > ul a').forEach(function (a) {
+            if (a.getAttribute('href') === here) a.classList.add('active');
+        });
+
+        var root = document.documentElement;
+        var button = document.querySelector('.theme-toggle');
+        if (button) button.addEventListener('click', function () {
+            /* No stored choice yet means we are following the system. */
+            var now = root.getAttribute('data-theme') ||
+                (matchMedia('(prefers-color-scheme: dark)').matches
+                    ? 'dark' : 'light');
+            var next = now === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    })();
+    </script>
+</body>
+</html>

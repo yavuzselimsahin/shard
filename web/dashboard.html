@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>shard</title>
+<style>
+:root {
+  --bg: #ffffff; --panel: #f7f7f5; --line: #e2e2dd; --ink: #16161a;
+  --muted: #6b6b73; --accent: #2f6f4f; --warn: #a8791b; --bad: #a83232;
+  --bar: #d6d6d0;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131316; --panel: #1a1a1f; --line: #2a2a31; --ink: #e8e8e6;
+    --muted: #8a8a94; --accent: #6ec295; --warn: #d9ab55; --bad: #e0736b;
+    --bar: #33333c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+header {
+  display: flex; align-items: baseline; gap: 12px;
+  padding: 14px 20px; border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; background: var(--bg); z-index: 5;
+}
+header h1 { font-size: 15px; margin: 0; letter-spacing: .04em; }
+header .cluster { color: var(--muted); }
+header .right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+button {
+  font: inherit; color: var(--ink); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 5px;
+  padding: 4px 10px; cursor: pointer;
+}
+button:hover { border-color: var(--muted); }
+main { max-width: 1100px; margin: 0 auto; padding: 22px 20px 60px; }
+section { margin-bottom: 34px; }
+h2 {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .12em;
+  color: var(--muted); font-weight: 600; margin: 0 0 12px;
+}
+.nodes { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.node {
+  border: 1px solid var(--line); border-radius: 7px;
+  background: var(--panel); padding: 12px 14px;
+}
+.node .top { display: flex; align-items: baseline; gap: 8px; }
+.node .name { font-weight: 600; }
+.node .spec { color: var(--muted); margin-left: auto; font-size: 12px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.online { background: var(--accent); }
+.dot.offline { background: var(--bar); }
+.tags { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.meter { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; }
+.meter .label { color: var(--muted); width: 34px; }
+.track { flex: 1; height: 6px; background: var(--bar); border-radius: 3px; overflow: hidden; }
+.fill { height: 100%; background: var(--accent); }
+.fill.hot { background: var(--warn); }
+.meter .pct { width: 40px; text-align: right; color: var(--muted); }
+.meter .items { color: var(--muted); white-space: nowrap; }
+.task .meter { margin-top: 10px; }
+.task .meter .label { width: 40px; }
+.offline-note { color: var(--muted); font-size: 12px; margin-top: 6px; }
+.task {
+  border: 1px solid var(--line); border-radius: 7px; background: var(--panel);
+  padding: 12px 14px; margin-bottom: 8px;
+}
+.task .head { display: flex; gap: 10px; align-items: baseline; cursor: pointer; }
+.task .cmd { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task .meta { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.status { font-size: 12px; padding: 1px 7px; border-radius: 20px; border: 1px solid var(--line); }
+.status.completed { color: var(--accent); }
+.status.running { color: var(--warn); }
+.status.failed, .status.timeout, .status.interrupted { color: var(--bad); }
+.jobs { margin-top: 10px; display: none; }
+.task.open .jobs { display: block; }
+.job {
+  display: flex; align-items: center; gap: 10px;
+  padding: 5px 0; border-top: 1px solid var(--line); cursor: pointer;
+}
+.job .jname { width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.job .jbar { flex: 1; }
+.job .jmeta { color: var(--muted); font-size: 12px; width: 130px; text-align: right; }
+pre.log {
+  margin: 8px 0 0; padding: 10px 12px; background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px;
+  max-height: 340px; overflow: auto; white-space: pre-wrap;
+  font-size: 12.5px; color: var(--ink);
+}
+.empty { color: var(--muted); }
+footer { color: var(--muted); font-size: 12px; padding: 0 20px 30px; max-width: 1100px; margin: 0 auto; }
+</style>
+</head>
+<body>
+<header>
+  <h1>shard</h1>
+  <span class="cluster" id="cluster-name"></span>
+  <span class="right">
+    <span class="cluster" id="checked"></span>
+    <button id="refresh-health">Check health</button>
+  </span>
+</header>
+
+<main>
+  <section>
+    <h2>Nodes</h2>
+    <div class="nodes" id="nodes"></div>
+  </section>
+
+  <section>
+    <h2>Running</h2>
+    <div id="running"><p class="empty">Nothing is running.</p></div>
+  </section>
+
+  <section>
+    <h2>Recent runs</h2>
+    <div id="recent"><p class="empty">No runs yet.</p></div>
+  </section>
+</main>
+
+<footer>
+  Read-only view of this cluster. Start work from the terminal:
+  <code>shard exec "uname -a" --on all</code>
+</footer>
+
+<script>
+var open = {};          // task id -> true while its jobs are expanded
+var openLog = {};       // task id -> job log file being shown
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>]/g, function (ch) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[ch];
+  });
+}
+
+function dur(sec) {
+  sec = Number(sec) || 0;
+  if (sec < 60) return sec.toFixed(1) + "s";
+  if (sec < 3600) return Math.floor(sec / 60) + "m " + String(Math.floor(sec % 60)).padStart(2, "0") + "s";
+  return Math.floor(sec / 3600) + "h " + Math.floor((sec % 3600) / 60) + "m";
+}
+
+function meter(label, pct) {
+  pct = Math.max(0, Math.min(100, Number(pct) || 0));
+  return '<div class="meter"><span class="label">' + label + '</span>' +
+         '<span class="track"><span class="fill' + (pct > 75 ? " hot" : "") +
+         '" style="width:' + pct + '%"></span></span>' +
+         '<span class="pct">' + pct + '%</span></div>';
+}
+
+function renderNodes(cluster, health) {
+  document.getElementById("cluster-name").textContent =
+    cluster.name + " · " + cluster.nodes.length + " nodes";
+
+  var checked = health && health.checked
+    ? "checked " + new Date(health.checked * 1000).toLocaleTimeString() : "not checked yet";
+  document.getElementById("checked").textContent = checked;
+
+  var html = cluster.nodes.map(function (n) {
+    var h = (health && health.nodes && health.nodes[n.name]) || null;
+    var online = h && h.status === "online";
+    var spec = [];
+    if (n.cpu) spec.push(n.cpu + " CPU");
+    if (n.ram_gb) spec.push(n.ram_gb + " GB");
+    if (online && !n.cpu && h.ncpu) spec.push(h.ncpu + " CPU");
+
+    var body = "";
+    if (online) {
+      body = meter("cpu", h.cpu_pct) + meter("ram", h.ram_pct);
+    } else if (h) {
+      body = '<p class="offline-note">' + esc(h.error || "offline") + "</p>";
+    } else {
+      body = '<p class="offline-note">no health data — press Check health</p>';
+    }
+
+    return '<div class="node"><div class="top">' +
+      '<span class="dot ' + (online ? "online" : "offline") + '"></span>' +
+      '<span class="name">' + esc(n.name) + "</span>" +
+      '<span class="spec">' + esc(spec.join(" · ")) + "</span></div>" +
+      '<div class="tags">' + esc(n.host) + (n.tags.length ? "  [" + esc(n.tags.join(", ")) + "]" : "") + "</div>" +
+      body + "</div>";
+  }).join("");
+
+  document.getElementById("nodes").innerHTML = html ||
+    '<p class="empty">No nodes in cluster.toml yet.</p>';
+}
+
+function jobRow(task, j) {
+  var pct = j.status === "completed" ? 100 : (j.status === "running" ? 50 : 100);
+  var cls = j.status === "running" ? "" : (j.status === "completed" ? "" : "hot");
+  return '<div class="job" data-task="' + esc(task.id) + '" data-log="' + esc(j.log) + '">' +
+    '<span class="jname">' + esc(j.label) + "</span>" +
+    '<span class="jbar"><span class="track"><span class="fill ' + cls +
+    '" style="width:' + pct + '%"></span></span></span>' +
+    '<span class="status ' + esc(j.status) + '">' + esc(j.status) + "</span>" +
+    '<span class="jmeta">' + dur(j.duration) +
+    (j.exit > 0 ? " · exit " + j.exit : "") + "</span></div>";
+}
+
+// A run made of items reports its real progress; one made of whole jobs
+// counts the jobs that have finished.
+function progressRow(t) {
+  if (!t.items_total) return "";
+  var pct = Math.round((t.items_done / t.items_total) * 100);
+  var eta = "";
+  if (t.status === "running" && t.items_done > 0) {
+    var per = t.duration / t.items_done;
+    eta = " · about " + dur(per * (t.items_total - t.items_done)) + " left";
+  }
+  return '<div class="meter"><span class="label">' + pct + '%</span>' +
+    '<span class="track"><span class="fill" style="width:' + pct + '%"></span></span>' +
+    '<span class="items">' + t.items_done + " / " + t.items_total + " items" +
+    (t.items_failed ? " · " + t.items_failed + " failed" : "") + eta + "</span></div>";
+}
+
+function taskCard(t) {
+  var done = t.jobs.filter(function (j) { return j.status !== "running" && j.status !== "pending"; }).length;
+  var isOpen = open[t.id];
+  var logFile = openLog[t.id];
+  var counted = t.items_total
+    ? t.items_done + "/" + t.items_total + " items"
+    : done + "/" + t.jobs.length;
+
+  return '<div class="task' + (isOpen ? " open" : "") + '" data-id="' + esc(t.id) + '">' +
+    '<div class="head"><span class="status ' + esc(t.status) + '">' + esc(t.status) + "</span>" +
+    '<span class="cmd">' + esc(t.command) + "</span>" +
+    '<span class="meta">' + counted + " · " + dur(t.duration) +
+    " · " + esc(t.started_at) + "</span></div>" +
+    progressRow(t) +
+    '<div class="jobs">' + t.jobs.map(function (j) { return jobRow(t, j); }).join("") +
+    (logFile ? '<pre class="log" id="log-' + esc(t.id) + '">loading…</pre>' : "") +
+    "</div></div>";
+}
+
+function renderTasks(tasks) {
+  var running = tasks.filter(function (t) { return t.status === "running"; });
+  var recent = tasks.filter(function (t) { return t.status !== "running"; });
+
+  document.getElementById("running").innerHTML =
+    running.length ? running.map(taskCard).join("") : '<p class="empty">Nothing is running.</p>';
+  document.getElementById("recent").innerHTML =
+    recent.length ? recent.map(taskCard).join("") : '<p class="empty">No runs yet.</p>';
+
+  Object.keys(openLog).forEach(function (id) { loadLog(id, openLog[id]); });
+}
+
+function loadLog(id, file) {
+  var pre = document.getElementById("log-" + id);
+  if (!pre) return;
+  fetch("/api/log?id=" + encodeURIComponent(id) + "&file=" + encodeURIComponent(file) + "&tail=400")
+    .then(function (r) { return r.text(); })
+    .then(function (text) {
+      var atBottom = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 20;
+      pre.textContent = text || "(no output)";
+      if (atBottom) pre.scrollTop = pre.scrollHeight;
+    });
+}
+
+document.addEventListener("click", function (ev) {
+  var job = ev.target.closest(".job");
+  if (job) {
+    var id = job.dataset.task;
+    openLog[id] = openLog[id] === job.dataset.log ? null : job.dataset.log;
+    if (!openLog[id]) delete openLog[id];
+    refresh();
+    return;
+  }
+  var head = ev.target.closest(".task .head");
+  if (head) {
+    var tid = head.closest(".task").dataset.id;
+    if (open[tid]) { delete open[tid]; delete openLog[tid]; }
+    else open[tid] = true;
+    refresh();
+  }
+});
+
+document.getElementById("refresh-health").addEventListener("click", function () {
+  var b = this;
+  b.disabled = true;
+  b.textContent = "Checking…";
+  fetch("/api/health", { method: "POST" })
+    .then(function () { return refresh(); })
+    .finally(function () { b.disabled = false; b.textContent = "Check health"; });
+});
+
+function refresh() {
+  return Promise.all([
+    fetch("/api/cluster").then(function (r) { return r.json(); }),
+    fetch("/api/health").then(function (r) { return r.json(); }),
+    fetch("/api/tasks?limit=25").then(function (r) { return r.json(); })
+  ]).then(function (res) {
+    renderNodes(res[0], res[1]);
+    renderTasks(res[2].tasks);
+  }).catch(function (e) {
+    document.getElementById("cluster-name").textContent = "connection lost";
+  });
+}
+
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>

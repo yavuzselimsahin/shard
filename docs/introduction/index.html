@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Introduction</title>
+    <meta name="description" content="What shard is, and when it helps">
+    <link rel="stylesheet" href="/shard/style.css">
+    <script>
+    /* Runs before the first paint, so a reader who chose a scheme never
+       sees the other one flash first. */
+    (function () {
+        var t = localStorage.getItem('theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/shard/">shard</a>
+        <span class="version">0.1.0</span>
+        <button class="theme-toggle" type="button"
+                aria-label="Switch between light and dark">
+            <span class="in-light">Dark</span>
+            <span class="in-dark">Light</span>
+        </button>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <ul><li><a href="/shard/introduction/">Introduction</a></li><li><a href="/shard/installation/">Installation</a></li><li><a href="/shard/quick-start/">Quick start</a></li><li><a href="/shard/guide/">Guide</a><ul><li><a href="/shard/guide/cluster-file/">The cluster file</a></li><li><a href="/shard/guide/shipping-code/">Shipping your code</a></li><li><a href="/shard/guide/running-commands/">Running commands</a></li><li><a href="/shard/guide/sharing-work/">Sharing work out</a></li><li><a href="/shard/guide/many-runs/">Running one thing many times</a></li><li><a href="/shard/guide/pipelines/">Steps and pipelines</a></li><li><a href="/shard/guide/tasks-file/">Named jobs</a></li><li><a href="/shard/guide/queue/">Queueing jobs</a></li><li><a href="/shard/guide/logs-and-history/">Logs and history</a></li><li><a href="/shard/guide/web-dashboard/">The web dashboard</a></li><li><a href="/shard/guide/terminal-dashboard/">The terminal dashboard</a></li></ul></li><li><a href="/shard/examples/">Example workloads</a></li><li><a href="/shard/reference/">Reference</a><ul><li><a href="/shard/reference/commands/">Commands</a></li><li><a href="/shard/reference/cluster-toml/">cluster.toml</a></li><li><a href="/shard/reference/tasks-toml/">tasks.toml</a></li><li><a href="/shard/reference/files/">Files and exit codes</a></li></ul></li><li><a href="/shard/troubleshooting/">Troubleshooting</a></li><li><a href="/shard/whats-next/">What is not here yet</a></li></ul>
+            <footer class="site-footer"><a href="https://github.com/yavuzselimsahin/atomik-ssg">Generated with atomik-ssg</a></footer>
+        </aside>
+        <main>
+            <article>
+                <h1>Introduction</h1>
+                <p>shard runs commands on several machines at once.</p>
+<p>You give it a list of machines you can already reach over SSH — a laptop, an
+old desktop in the corner, a cloud VM you rent by the hour — and it treats
+them as one pool of computing power. Then you send work to them:</p>
+<pre><code class="language-bash">shard exec &quot;make -j4&quot; --on all
+</code></pre>
+<p>That is the whole idea. There is no cluster to set up, no scheduler to
+configure, and nothing to install on the machines you use.</p>
+<h2>When it helps</h2>
+<ul>
+<li>You have machines sitting idle and a job that takes too long on one of them.</li>
+<li>You need to run the same thing a thousand times with a different number each
+time, and one machine would take all night.</li>
+<li>Your test suite runs for twenty minutes and could run on three machines
+instead of one.</li>
+<li>You need the same command run on every machine you own — an update, a check,
+a cleanup.</li>
+<li>You want to see, in one place, what each machine is doing right now — in a
+browser or in the terminal.</li>
+<li>You have a stack of jobs to get through and want them run in the order that
+matters, without starting each one by hand.</li>
+</ul>
+<h2>What makes it small</h2>
+<p><strong>Nothing is installed on the far machines.</strong> shard opens an ordinary SSH
+connection and runs your command. If <code>ssh othermachine &quot;uptime&quot;</code> works today,
+shard works today. Your own code travels with the job — see
+<a href="/shard/guide/shipping-code/">Shipping your code</a> — so the other machines lend you
+their CPU without needing to know anything about what they are running.</p>
+<p><strong>One file describes the cluster.</strong> <code>cluster.toml</code> lists the machines. You can
+read it, edit it in any text editor, and keep it next to your project.</p>
+<p><strong>One binary does everything.</strong> The command line, the parallel execution and
+the web dashboard are all the same program. No runtime, no dependencies, no
+background service.</p>
+<p><strong>Your machines stay yours.</strong> Home machines and cloud machines sit in the same
+list. Nothing is tied to a provider, and no account is required.</p>
+<h2>What it is not</h2>
+<p>shard is built for batch work: jobs that start, do something, and finish. It
+is a good fit for builds, test suites, batches of simulations, renders and
+maintenance commands.</p>
+<p>It is not a replacement for Kubernetes, not a real-time system, and not a
+machine-learning training framework. If you need containers that restart
+themselves, or millisecond scheduling, use the tools built for that.</p>
+<h2>Where to go next</h2>
+<p>Start with <a href="/shard/installation/">Installation</a>, then follow the
+<a href="/shard/quick-start/">Quick start</a> — it takes about five minutes and ends with a
+command running on every machine you own.</p>
+
+            </article>
+            <nav class="post-nav">
+                <a class="prev" href=""></a>
+                <a class="next" href="/shard/installation/">Installation</a>
+            </nav>
+            <a class="edit" href="">Edit this page</a>
+        </main>
+    </div>
+    <script>
+    (function () {
+        var here = location.pathname;
+        document.querySelectorAll('.sidebar > ul a').forEach(function (a) {
+            if (a.getAttribute('href') === here) a.classList.add('active');
+        });
+
+        var root = document.documentElement;
+        var button = document.querySelector('.theme-toggle');
+        if (button) button.addEventListener('click', function () {
+            /* No stored choice yet means we are following the system. */
+            var now = root.getAttribute('data-theme') ||
+                (matchMedia('(prefers-color-scheme: dark)').matches
+                    ? 'dark' : 'light');
+            var next = now === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    })();
+    </script>
+</body>
+</html>

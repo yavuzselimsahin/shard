@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The cluster file</title>
+    <meta name="description" content="Describing your machines in cluster.toml">
+    <link rel="stylesheet" href="/shard/style.css">
+    <script>
+    /* Runs before the first paint, so a reader who chose a scheme never
+       sees the other one flash first. */
+    (function () {
+        var t = localStorage.getItem('theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/shard/">shard</a>
+        <span class="version">0.1.0</span>
+        <button class="theme-toggle" type="button"
+                aria-label="Switch between light and dark">
+            <span class="in-light">Dark</span>
+            <span class="in-dark">Light</span>
+        </button>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <ul><li><a href="/shard/introduction/">Introduction</a></li><li><a href="/shard/installation/">Installation</a></li><li><a href="/shard/quick-start/">Quick start</a></li><li><a href="/shard/guide/">Guide</a><ul><li><a href="/shard/guide/cluster-file/">The cluster file</a></li><li><a href="/shard/guide/shipping-code/">Shipping your code</a></li><li><a href="/shard/guide/running-commands/">Running commands</a></li><li><a href="/shard/guide/sharing-work/">Sharing work out</a></li><li><a href="/shard/guide/many-runs/">Running one thing many times</a></li><li><a href="/shard/guide/pipelines/">Steps and pipelines</a></li><li><a href="/shard/guide/tasks-file/">Named jobs</a></li><li><a href="/shard/guide/queue/">Queueing jobs</a></li><li><a href="/shard/guide/logs-and-history/">Logs and history</a></li><li><a href="/shard/guide/web-dashboard/">The web dashboard</a></li><li><a href="/shard/guide/terminal-dashboard/">The terminal dashboard</a></li></ul></li><li><a href="/shard/examples/">Example workloads</a></li><li><a href="/shard/reference/">Reference</a><ul><li><a href="/shard/reference/commands/">Commands</a></li><li><a href="/shard/reference/cluster-toml/">cluster.toml</a></li><li><a href="/shard/reference/tasks-toml/">tasks.toml</a></li><li><a href="/shard/reference/files/">Files and exit codes</a></li></ul></li><li><a href="/shard/troubleshooting/">Troubleshooting</a></li><li><a href="/shard/whats-next/">What is not here yet</a></li></ul>
+            <footer class="site-footer"><a href="https://github.com/yavuzselimsahin/atomik-ssg">Generated with atomik-ssg</a></footer>
+        </aside>
+        <main>
+            <article>
+                <h1>The cluster file</h1>
+                <p><code>cluster.toml</code> is the only configuration shard has. It lists the machines you
+can use and a few facts about each one.</p>
+<p>shard looks for it in two places, in this order:</p>
+<ol>
+<li><code>cluster.toml</code> in the directory you are in,</li>
+<li><code>~/.shard/cluster.toml</code>.</li>
+</ol>
+<p>The first one lets a project carry its own set of machines. The second is your
+personal default, used wherever you happen to be. To point at a different file
+for one command, use <code>--config</code>:</p>
+<pre><code class="language-bash">shard exec &quot;uptime&quot; --config ~/work/build-farm.toml
+</code></pre>
+<h2>A complete example</h2>
+<pre><code class="language-toml">[cluster]
+name    = &quot;home-lab&quot;
+log_dir = &quot;~/.shard/logs&quot;
+
+[[nodes]]
+name = &quot;laptop&quot;
+host = &quot;localhost&quot;
+tags = [&quot;local&quot;, &quot;fast&quot;]
+cpu  = 8
+ram_gb = 16
+
+[[nodes]]
+name   = &quot;old-desktop&quot;
+host   = &quot;192.168.1.15&quot;
+user   = &quot;yavuz&quot;
+tags   = [&quot;cpu&quot;]
+cpu    = 2
+ram_gb = 4
+
+[[nodes]]
+name   = &quot;ec2-worker&quot;
+host   = &quot;ec2-13-58-0-1.compute.amazonaws.com&quot;
+user   = &quot;ubuntu&quot;
+key    = &quot;~/.ssh/aws-key.pem&quot;
+tags   = [&quot;cloud&quot;, &quot;cpu&quot;]
+cpu    = 4
+ram_gb = 8
+</code></pre>
+<p>A machine at home and a machine in a data centre are written the same way. The
+only difference is the address, and sometimes a key file.</p>
+<h2>What a machine can say about itself</h2>
+<table>
+  <tr><th>Key</th><th>Meaning</th></tr>
+  <tr><td><code>name</code></td>
+      <td>What you type to select this machine. Required in practice.</td></tr>
+  <tr><td><code>host</code></td>
+      <td>Address or hostname. <code>localhost</code> means this machine.</td></tr>
+  <tr><td><code>user</code></td>
+      <td>SSH user. Left out, SSH uses your own username.</td></tr>
+  <tr><td><code>key</code></td>
+      <td>SSH key file, such as <code>~/.ssh/aws-key.pem</code>.</td></tr>
+  <tr><td><code>port</code></td>
+      <td>SSH port, if it is not 22.</td></tr>
+  <tr><td><code>tags</code></td>
+      <td>Labels you invent, for addressing groups of machines.</td></tr>
+  <tr><td><code>cpu</code></td>
+      <td>Core count. Used to decide how much work this machine takes.</td></tr>
+  <tr><td><code>ram_gb</code></td>
+      <td>Memory, shown in listings. Not used for scheduling yet.</td></tr>
+  <tr><td><code>workdir</code></td>
+      <td>Directory to change into before running anything.</td></tr>
+  <tr><td><code>local</code></td>
+      <td><code>true</code> to run without SSH. Implied by <code>localhost</code>.</td></tr>
+</table>
+<p>Everything except <code>name</code> and <code>host</code> is optional.</p>
+<h2>This machine counts too</h2>
+<p>A node whose host is <code>localhost</code> runs commands directly, without SSH. That is
+worth having: your own machine is usually the fastest one you own, and
+including it means a two-machine cluster needs no SSH setup at all to try.</p>
+<h2>Tags</h2>
+<p>Tags are yours to invent. Common ones are the kind of machine (<code>gpu</code>, <code>cpu</code>),
+where it is (<code>home</code>, <code>cloud</code>), or what it is for (<code>build</code>, <code>test</code>).</p>
+<pre><code class="language-toml">tags = [&quot;cloud&quot;, &quot;cpu&quot;]
+</code></pre>
+<p>Then address the group:</p>
+<pre><code class="language-bash">shard exec &quot;apt-get update&quot; --on cloud
+</code></pre>
+<p>A machine with several tags answers to each of them.</p>
+<h2>Where logs go</h2>
+<p><code>log_dir</code> under <code>[cluster]</code> sets where output is kept. The default,
+<code>~/.shard/logs</code>, suits most people. Point it at a shared disk if you want runs
+from several projects in one place.</p>
+<h2>Editing the file</h2>
+<p><code>shard cluster add-node</code> asks a few questions and appends a block. Removing
+one is a line edit rather than a rewrite, so the comments you left in the file
+survive:</p>
+<pre><code class="language-bash">shard cluster remove old-desktop
+</code></pre>
+<p>The file is plain text and yours to edit by hand at any time — shard reads it
+fresh on every command.</p>
+
+            </article>
+            <nav class="post-nav">
+                <a class="prev" href="/shard/guide/">Guide</a>
+                <a class="next" href="/shard/guide/shipping-code/">Shipping your code</a>
+            </nav>
+            <a class="edit" href="">Edit this page</a>
+        </main>
+    </div>
+    <script>
+    (function () {
+        var here = location.pathname;
+        document.querySelectorAll('.sidebar > ul a').forEach(function (a) {
+            if (a.getAttribute('href') === here) a.classList.add('active');
+        });
+
+        var root = document.documentElement;
+        var button = document.querySelector('.theme-toggle');
+        if (button) button.addEventListener('click', function () {
+            /* No stored choice yet means we are following the system. */
+            var now = root.getAttribute('data-theme') ||
+                (matchMedia('(prefers-color-scheme: dark)').matches
+                    ? 'dark' : 'light');
+            var next = now === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+:root {
+    --bg:      #0f1117;
+    --border:  #2a2d3a;
+    --text:    #e2e8f0;
+    --muted:   #64748b;
+    --accent:  #60a5fa;
+    --code-bg: #141720;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text);
+    font-family: monospace; font-size: 1rem;
+    line-height: 1.8; max-width: 680px;
+    margin: 0 auto; padding: 2rem 1.5rem; }
+header { border-bottom: 1px solid var(--border);
+    padding-bottom: 1.5rem; margin-bottom: 2.5rem; }
+header a { color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+header h1 { font-size: 1.4rem; margin-bottom: 0.3rem; color: var(--accent); }
+header p { color: var(--muted); font-size: 0.9rem; }
+.post-list { list-style: none; }
+.post-list li { padding: 1.2rem 0; border-bottom: 1px solid var(--border); }
+.post-list time { font-size: 0.85rem; color: var(--muted);
+    display: block; margin-bottom: 0.3rem; }
+.post-list a { color: var(--text); text-decoration: none;
+    font-size: 1.1rem; font-weight: bold; }
+.post-list a:hover { color: var(--accent); }
+.post-list p { color: var(--muted); font-size: 0.9rem; margin-top: 0.3rem; }
+article h1 { font-size: 1.8rem; margin-bottom: 0.5rem; color: var(--accent); }
+article time { font-size: 0.85rem; color: var(--muted); display: block;
+    margin-bottom: 2rem; padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border); }
+article h2 { font-size: 1.3rem; margin: 2rem 0 0.8rem; color: var(--accent); }
+article h3 { font-size: 1.1rem; margin: 1.5rem 0 0.6rem; }
+article p { margin-bottom: 1.2rem; }
+article a { color: var(--accent); }
+pre { background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 4px; padding: 1.2rem; overflow-x: auto;
+    margin: 1.5rem 0; font-size: 0.88rem; }
+code { font-family: monospace; font-size: 0.88em; }
+p code { background: var(--code-bg); border: 1px solid var(--border);
+    padding: 0.15em 0.4em; border-radius: 3px; }
+blockquote { border-left: 3px solid var(--accent);
+    padding-left: 1rem; color: var(--muted); margin: 1.5rem 0; }
+.site-nav ul { list-style: none; display: flex; flex-wrap: wrap;
+    gap: 1rem; margin-top: 0.8rem; padding: 0; }
+.site-nav ul:empty { display: none; }
+.site-nav a { color: var(--muted); text-decoration: none;
+    font-size: 0.85rem; }
+.site-nav a:hover { color: var(--accent); }
+.post-nav { display: flex; justify-content: space-between; gap: 1rem;
+    margin-top: 3rem; }
+.post-nav a { color: var(--accent); text-decoration: none;
+    font-size: 0.9rem; max-width: 45%; }
+.post-nav a:empty { display: none; }
+.post-nav .prev::before { content: "\2190  "; }
+.post-nav .next { margin-left: auto; text-align: right; }
+.post-nav .next::after { content: "  \2192"; }
+/* The label is CSS, not markup, so a theme decides how it reads. */
+.callout { border-left: 3px solid var(--accent);
+    background: var(--code-bg); padding: 0.8rem 1rem;
+    margin: 1.5rem 0; }
+.callout::before { display: block; font-size: 0.72rem;
+    font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; margin-bottom: 0.3rem;
+    color: var(--accent); }
+.callout > :last-child { margin-bottom: 0; }
+.callout-note::before { content: "Note"; }
+.callout-tip::before { content: "Tip"; }
+.callout-important::before { content: "Important"; }
+.callout-warning::before { content: "Warning"; }
+.callout-caution::before { content: "Caution"; }
+/* Empty when built_with is off, and then it takes up no room. */
+.site-footer { margin-top: 3rem; padding-top: 1.1rem;
+    border-top: 1px solid var(--border); font-size: 0.78rem;
+    line-height: 1.5; letter-spacing: 0.01em; color: var(--muted); }
+.site-footer:empty { display: none; }
+.site-footer a { color: var(--muted); text-decoration: none; }
+.site-footer a:hover { color: var(--accent); }

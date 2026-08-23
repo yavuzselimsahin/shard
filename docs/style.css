@@ -1,0 +1,212 @@
+/* Light is the palette of the default blog theme, dark is the palette of
+   the dark one, so a site that mixes docs and posts stays one thing.
+   --panel is the only addition: the docs layout has raised surfaces
+   (hover rows, table headers, callouts) that the blog templates lack. */
+:root {
+    --bg:       #ffffff;
+    --panel:    #f7fafc;
+    --border:   #e2e8f0;
+    --text:     #1a202c;
+    --muted:    #718096;
+    --accent:   #2b6cb0;
+    --code-bg:  #f7fafc;
+    --cal-note:      #2b6cb0;
+    --cal-tip:       #276749;
+    --cal-important: #553c9a;
+    --cal-warning:   #975a16;
+    --cal-caution:   #9b2c2c;
+}
+/* Dark applies when the system asks for it and the reader has not chosen
+   otherwise, or when the reader chose it outright. The two blocks carry
+   the same values; only the condition differs. */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg:      #0f1117;
+        --panel:   #191d28;
+        --border:  #2a2d3a;
+        --text:    #e2e8f0;
+        --muted:   #8b98ab;
+        --accent:  #60a5fa;
+        --code-bg: #141720;
+        --cal-note:      #63b3ed;
+        --cal-tip:       #68d391;
+        --cal-important: #b794f4;
+        --cal-warning:   #f6ad55;
+        --cal-caution:   #fc8181;
+    }
+}
+:root[data-theme="dark"] {
+    --bg:      #0f1117;
+    --panel:   #191d28;
+    --border:  #2a2d3a;
+    --text:    #e2e8f0;
+    --muted:   #8b98ab;
+    --accent:  #60a5fa;
+    --code-bg: #141720;
+    --cal-note:      #63b3ed;
+    --cal-tip:       #68d391;
+    --cal-important: #b794f4;
+    --cal-warning:   #f6ad55;
+    --cal-caution:   #fc8181;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); line-height: 1.7;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+        Helvetica, Arial, sans-serif; }
+
+/* top bar */
+.topbar { display: flex; align-items: center; justify-content: space-between;
+    gap: 0.5rem; padding: 0.9rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: var(--bg); z-index: 10; }
+.brand { font-weight: 600; color: var(--text); text-decoration: none; }
+/* Plain text beside the site name, not a badge. margin-right pushes
+   everything after it to the far end. Empty when config.toml sets no
+   version, and then it is not there at all. */
+.version { margin-right: auto; font-size: 0.78rem; color: var(--muted); }
+.version:empty { display: none; }
+.theme-toggle { font: inherit; font-size: 0.8rem; cursor: pointer;
+    color: var(--muted); background: none; padding: 0.25rem 0.6rem;
+    border: 1px solid var(--border); border-radius: 5px; }
+.theme-toggle:hover { color: var(--accent); border-color: var(--accent); }
+/* Each label shows only in the scheme it switches away from. */
+.theme-toggle .in-dark { display: none; }
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .theme-toggle .in-light { display: none; }
+    :root:not([data-theme="light"]) .theme-toggle .in-dark { display: inline; }
+}
+:root[data-theme="dark"] .theme-toggle .in-light { display: none; }
+:root[data-theme="dark"] .theme-toggle .in-dark { display: inline; }
+:root[data-theme="light"] .theme-toggle .in-light { display: inline; }
+:root[data-theme="light"] .theme-toggle .in-dark { display: none; }
+
+/* two columns, one on a phone */
+.layout { display: grid; grid-template-columns: 240px minmax(0, 1fr);
+    gap: 3rem; max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+/* sidebar */
+/* Two parts: the tree takes the height that is going and scrolls, the
+   footer under it stays where it is. Reading the attribution should not
+   mean scrolling an article to the end. */
+.sidebar { position: sticky; top: 4.5rem; align-self: start;
+    max-height: calc(100vh - 6rem); font-size: 0.9rem;
+    display: flex; flex-direction: column; }
+.sidebar > ul { overflow-y: auto; flex: 1; min-height: 0; }
+.sidebar ul { list-style: none; }
+.sidebar > ul > li { margin-bottom: 1.2rem; }
+.sidebar ul ul { margin: 0.3rem 0 0 0; padding-left: 0.8rem;
+    border-left: 1px solid var(--border); }
+.sidebar ul ul li { margin: 0.15rem 0; }
+/* Scoped to the tree: the attribution below it is an ordinary link, not
+   another row in the navigation. */
+.sidebar > ul a, .sidebar > ul span { display: block;
+    padding: 0.2rem 0.5rem; border-radius: 4px;
+    text-decoration: none; color: var(--muted); }
+.sidebar > ul > li > a, .sidebar > ul > li > span {
+    color: var(--text); font-weight: 600; }
+.sidebar > ul a:hover { background: var(--panel); color: var(--accent); }
+.sidebar > ul a.active { background: var(--panel); color: var(--accent);
+    font-weight: 600; }
+
+/* content */
+main { min-width: 0; }
+article h1 { font-size: 2rem; line-height: 1.25; margin-bottom: 1.2rem; }
+article h2 { font-size: 1.35rem; margin: 2.2rem 0 0.8rem;
+    padding-top: 0.6rem; border-top: 1px solid var(--border); }
+article h3 { font-size: 1.1rem; margin: 1.6rem 0 0.5rem; }
+article p, article ul, article ol { margin-bottom: 1.1rem; }
+article ul, article ol { padding-left: 1.4rem; }
+article a { color: var(--accent); }
+article time { display: block; color: var(--muted); font-size: 0.85rem;
+    margin: -0.6rem 0 1.6rem; }
+.lede { color: var(--muted); font-size: 1.1rem; }
+table { border-collapse: collapse; width: 100%; margin-bottom: 1.2rem;
+    display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--border); padding: 0.5rem 0.8rem;
+    text-align: left; }
+th { background: var(--panel); }
+pre { background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 1rem; overflow-x: auto;
+    margin-bottom: 1.2rem; font-size: 0.88rem; line-height: 1.5; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.88em; }
+:not(pre) > code { background: var(--code-bg); padding: 0.15em 0.4em;
+    border-radius: 4px; }
+blockquote { border-left: 3px solid var(--accent); background: var(--panel);
+    padding: 0.8rem 1rem; margin-bottom: 1.2rem; color: var(--muted); }
+
+/* table of contents on the landing page */
+.contents { margin-top: 2.5rem; }
+.contents h2 { font-size: 0.85rem; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.8rem; }
+.contents ul { list-style: none; }
+.contents > ul > li { padding: 0.7rem 0;
+    border-bottom: 1px solid var(--border); }
+.contents > ul > li > a, .contents > ul > li > span {
+    font-weight: 600; font-size: 1.05rem; color: var(--text);
+    text-decoration: none; }
+.contents > ul > li > a:hover { color: var(--accent); }
+.contents ul ul { display: flex; flex-wrap: wrap; gap: 0.3rem 1.2rem;
+    margin-top: 0.35rem; }
+.contents ul ul a { color: var(--muted); text-decoration: none;
+    font-size: 0.9rem; }
+.contents ul ul a:hover { color: var(--accent); }
+
+/* footer navigation */
+.post-nav { display: flex; gap: 1rem; margin-top: 3rem; }
+.post-nav a { flex: 1; max-width: 50%; padding: 0.8rem 1rem;
+    border: 1px solid var(--border); border-radius: 6px;
+    color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+.post-nav a:hover { background: var(--panel); }
+.post-nav a:empty { display: none; }
+.post-nav .prev::before { content: "\2190  "; }
+.post-nav .next { margin-left: auto; text-align: right; }
+.post-nav .next::after { content: "  \2192"; }
+/* empty when config.toml sets no edit_url */
+.edit { display: inline-block; margin-top: 2rem; font-size: 0.85rem;
+    color: var(--muted); }
+.edit[href=""] { display: none; }
+
+/* Callouts. The label is CSS, not markup. */
+.callout { border-left: 3px solid var(--border);
+    background: var(--panel); padding: 0.9rem 1rem;
+    margin-bottom: 1.2rem; border-radius: 0 5px 5px 0; }
+.callout::before { display: block; font-size: 0.72rem;
+    font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout > :last-child { margin-bottom: 0; }
+.callout-note { border-left-color: var(--cal-note); }
+.callout-note::before { content: "Note"; color: var(--cal-note); }
+.callout-tip { border-left-color: var(--cal-tip); }
+.callout-tip::before { content: "Tip"; color: var(--cal-tip); }
+.callout-important { border-left-color: var(--cal-important); }
+.callout-important::before { content: "Important"; color: var(--cal-important); }
+.callout-warning { border-left-color: var(--cal-warning); }
+.callout-warning::before { content: "Warning"; color: var(--cal-warning); }
+.callout-caution { border-left-color: var(--cal-caution); }
+.callout-caution::before { content: "Caution"; color: var(--cal-caution); }
+
+/* Pinned to the foot of the sidebar, outside the part that scrolls.
+   No rule above it: in a column this narrow the gap says enough.
+   Empty when built_with is off, and then it takes no room. */
+.site-footer { flex-shrink: 0; margin-top: 1.4rem; font-size: 0.75rem;
+    line-height: 1.4; letter-spacing: 0.01em; color: var(--muted); }
+.site-footer:empty { display: none; }
+.site-footer a { color: var(--muted); text-decoration: none; }
+.site-footer a:hover { color: var(--accent); }
+
+/* Phone layout. This block has to come last: it unsets the sticky
+   positioning above, and at equal specificity the later rule wins. */
+@media (max-width: 800px) {
+    .layout { grid-template-columns: 1fr; gap: 1.5rem; padding-top: 1.5rem; }
+    .sidebar { position: static; max-height: none; overflow: visible;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 1.2rem; margin-bottom: 0.5rem; }
+    .sidebar > ul { overflow: visible; }
+    .sidebar > ul > li { margin-bottom: 0.9rem; }
+    .site-footer { margin-top: 0.9rem; }
+    article h1 { font-size: 1.6rem; }
+    .post-nav { flex-direction: column; }
+    .post-nav a { max-width: none; }
+    .post-nav .next { margin-left: 0; }
+}

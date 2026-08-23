@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Files and exit codes</title>
+    <meta name="description" content="What shard writes, and what it returns">
+    <link rel="stylesheet" href="/shard/style.css">
+    <script>
+    /* Runs before the first paint, so a reader who chose a scheme never
+       sees the other one flash first. */
+    (function () {
+        var t = localStorage.getItem('theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/shard/">shard</a>
+        <span class="version">0.1.0</span>
+        <button class="theme-toggle" type="button"
+                aria-label="Switch between light and dark">
+            <span class="in-light">Dark</span>
+            <span class="in-dark">Light</span>
+        </button>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <ul><li><a href="/shard/introduction/">Introduction</a></li><li><a href="/shard/installation/">Installation</a></li><li><a href="/shard/quick-start/">Quick start</a></li><li><a href="/shard/guide/">Guide</a><ul><li><a href="/shard/guide/cluster-file/">The cluster file</a></li><li><a href="/shard/guide/shipping-code/">Shipping your code</a></li><li><a href="/shard/guide/running-commands/">Running commands</a></li><li><a href="/shard/guide/sharing-work/">Sharing work out</a></li><li><a href="/shard/guide/many-runs/">Running one thing many times</a></li><li><a href="/shard/guide/pipelines/">Steps and pipelines</a></li><li><a href="/shard/guide/tasks-file/">Named jobs</a></li><li><a href="/shard/guide/queue/">Queueing jobs</a></li><li><a href="/shard/guide/logs-and-history/">Logs and history</a></li><li><a href="/shard/guide/web-dashboard/">The web dashboard</a></li><li><a href="/shard/guide/terminal-dashboard/">The terminal dashboard</a></li></ul></li><li><a href="/shard/examples/">Example workloads</a></li><li><a href="/shard/reference/">Reference</a><ul><li><a href="/shard/reference/commands/">Commands</a></li><li><a href="/shard/reference/cluster-toml/">cluster.toml</a></li><li><a href="/shard/reference/tasks-toml/">tasks.toml</a></li><li><a href="/shard/reference/files/">Files and exit codes</a></li></ul></li><li><a href="/shard/troubleshooting/">Troubleshooting</a></li><li><a href="/shard/whats-next/">What is not here yet</a></li></ul>
+            <footer class="site-footer"><a href="https://github.com/yavuzselimsahin/atomik-ssg">Generated with atomik-ssg</a></footer>
+        </aside>
+        <main>
+            <article>
+                <h1>Files and exit codes</h1>
+                <h2>What shard writes</h2>
+<table>
+  <tr><th>Path</th><th>What it is</th></tr>
+  <tr><td><code>./cluster.toml</code></td>
+      <td>The cluster for this directory. Written by <code>shard cluster init</code>.</td></tr>
+  <tr><td><code>~/.shard/cluster.toml</code></td>
+      <td>Your default cluster, used when the directory has none.</td></tr>
+  <tr><td><code>~/.shard/logs/&lt;run-id&gt;/</code></td>
+      <td>One directory per run.</td></tr>
+  <tr><td><code>~/.shard/logs/&lt;run-id&gt;/task.json</code></td>
+      <td>What ran, on which machines, how long it took, how it ended.</td></tr>
+  <tr><td><code>~/.shard/logs/&lt;run-id&gt;/&lt;machine&gt;.log</code></td>
+      <td>Everything that machine printed, output and errors together.</td></tr>
+  <tr><td><code>~/.shard/state/&lt;cluster&gt;-health.json</code></td>
+      <td>The last health check, so the dashboard can show it immediately.</td></tr>
+</table>
+<p>Nothing is written on the machines you run work on.</p>
+<p>A run id looks like <code>20260822-211013-1490</code>: the date, the time, and the
+process that started it.</p>
+<h2>Exit codes</h2>
+<table>
+  <tr><th>Code</th><th>Meaning</th></tr>
+  <tr><td><code>0</code></td><td>Everything succeeded.</td></tr>
+  <tr><td><code>1</code></td><td>At least one machine failed, or the command could not run at all.</td></tr>
+</table>
+<p>Per-machine exit codes are reported in the summary and stored in <code>task.json</code>.
+Two are shard's own rather than your command's:</p>
+<table>
+  <tr><th>Code</th><th>Meaning</th></tr>
+  <tr><td><code>124</code></td><td>The job hit <code>--timeout</code> and was killed.</td></tr>
+  <tr><td><code>255</code></td><td>SSH could not connect. The log holds the reason.</td></tr>
+</table>
+<h2>How a command reaches a machine</h2>
+<p>For a remote machine:</p>
+<pre><code>ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+    -o ConnectTimeout=10 -o LogLevel=ERROR \
+    [-i key] [-p port] user@host &lt;your command&gt;
+</code></pre>
+<p>For a local one:</p>
+<pre><code>/bin/sh -c &lt;your command&gt;
+</code></pre>
+<p><code>--dry-run</code> prints exactly this, for every selected machine, without running
+anything.</p>
+<p><code>BatchMode=yes</code> is why a machine that wants a password is reported as
+unreachable instead of stopping the run to ask.</p>
+
+            </article>
+            <nav class="post-nav">
+                <a class="prev" href="/shard/reference/tasks-toml/">tasks.toml</a>
+                <a class="next" href="/shard/troubleshooting/">Troubleshooting</a>
+            </nav>
+            <a class="edit" href="">Edit this page</a>
+        </main>
+    </div>
+    <script>
+    (function () {
+        var here = location.pathname;
+        document.querySelectorAll('.sidebar > ul a').forEach(function (a) {
+            if (a.getAttribute('href') === here) a.classList.add('active');
+        });
+
+        var root = document.documentElement;
+        var button = document.querySelector('.theme-toggle');
+        if (button) button.addEventListener('click', function () {
+            /* No stored choice yet means we are following the system. */
+            var now = root.getAttribute('data-theme') ||
+                (matchMedia('(prefers-color-scheme: dark)').matches
+                    ? 'dark' : 'light');
+            var next = now === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    })();
+    </script>
+</body>
+</html>

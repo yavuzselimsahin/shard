@@ -1,0 +1,27 @@
+title       = "shard"
+description = "Run commands across the machines you already have"
+base_url    = "https://yavuzselimsahin.github.io/shard"
+author      = "Yavuz Selim Sahin"
+theme       = "docs"
+
+# Shown by the docs theme so a reader can tell which release this
+# documents. Leave it out and nothing is displayed.
+version = "0.1.0"
+
+# Served from a GitHub project page, i.e. a subdirectory, so every generated
+# link is prefixed to match.
+base_path = "/shard"
+
+# A quiet line in the footer noting how the site was made.
+# Comment it out to remove it.
+built_with  = true
+
+[deploy]
+host = "user@vps"
+path = "/var/www/myblog"
+
+[build]
+output_dir = "public"
+
+[server]
+port = 4545

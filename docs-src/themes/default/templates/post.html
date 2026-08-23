@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}}</title>
+    <meta name="description" content="{{description}}">
+    <link rel="stylesheet" href="{{base_path}}/style.css">
+</head>
+<body>
+    <header>
+        <a href="{{base_path}}/">&larr; Home</a>
+        <nav class="site-nav"><ul>{{pages}}</ul></nav>
+    </header>
+    <main>
+        <article>
+            <h1>{{title}}</h1>
+            <time>{{date}}</time>
+            {{content}}
+        </article>
+        <nav class="post-nav">
+            <a class="prev" href="{{prev_url}}">{{prev_title}}</a>
+            <a class="next" href="{{next_url}}">{{next_title}}</a>
+        </nav>
+    </main>
+    <footer class="site-footer">{{built_with}}</footer>
+</body>
+</html>

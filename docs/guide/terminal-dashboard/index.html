@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The terminal dashboard</title>
+    <meta name="description" content="The same view, without leaving the terminal">
+    <link rel="stylesheet" href="/shard/style.css">
+    <script>
+    /* Runs before the first paint, so a reader who chose a scheme never
+       sees the other one flash first. */
+    (function () {
+        var t = localStorage.getItem('theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/shard/">shard</a>
+        <span class="version">0.1.0</span>
+        <button class="theme-toggle" type="button"
+                aria-label="Switch between light and dark">
+            <span class="in-light">Dark</span>
+            <span class="in-dark">Light</span>
+        </button>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <ul><li><a href="/shard/introduction/">Introduction</a></li><li><a href="/shard/installation/">Installation</a></li><li><a href="/shard/quick-start/">Quick start</a></li><li><a href="/shard/guide/">Guide</a><ul><li><a href="/shard/guide/cluster-file/">The cluster file</a></li><li><a href="/shard/guide/shipping-code/">Shipping your code</a></li><li><a href="/shard/guide/running-commands/">Running commands</a></li><li><a href="/shard/guide/sharing-work/">Sharing work out</a></li><li><a href="/shard/guide/many-runs/">Running one thing many times</a></li><li><a href="/shard/guide/pipelines/">Steps and pipelines</a></li><li><a href="/shard/guide/tasks-file/">Named jobs</a></li><li><a href="/shard/guide/queue/">Queueing jobs</a></li><li><a href="/shard/guide/logs-and-history/">Logs and history</a></li><li><a href="/shard/guide/web-dashboard/">The web dashboard</a></li><li><a href="/shard/guide/terminal-dashboard/">The terminal dashboard</a></li></ul></li><li><a href="/shard/examples/">Example workloads</a></li><li><a href="/shard/reference/">Reference</a><ul><li><a href="/shard/reference/commands/">Commands</a></li><li><a href="/shard/reference/cluster-toml/">cluster.toml</a></li><li><a href="/shard/reference/tasks-toml/">tasks.toml</a></li><li><a href="/shard/reference/files/">Files and exit codes</a></li></ul></li><li><a href="/shard/troubleshooting/">Troubleshooting</a></li><li><a href="/shard/whats-next/">What is not here yet</a></li></ul>
+            <footer class="site-footer"><a href="https://github.com/yavuzselimsahin/atomik-ssg">Generated with atomik-ssg</a></footer>
+        </aside>
+        <main>
+            <article>
+                <h1>The terminal dashboard</h1>
+                <pre><code class="language-bash">shard tui
+</code></pre>
+<p>Everything the <a href="/shard/guide/web-dashboard/">web dashboard</a> shows, drawn in the
+terminal you are already in. It is the right one to use over SSH, on a machine
+with no browser, or when you would rather not leave the keyboard.</p>
+<pre><code> shard  home-lab  3/4 online                                        21:47:03
+────────────────────────────────────────────────────────────────────────────
+ NODES
+ ● laptop           ▓▓░░░░░░  22% cpu  ▓▓▓▓░░░░  46% ram  8 cpu
+ ● old-desktop      ░░░░░░░░   4% cpu  ▓▓░░░░░░  21% ram  2 cpu
+ ● ec2-worker       ▓▓▓▓▓▓░░  71% cpu  ▓▓▓▓░░░░  50% ram  4 cpu
+ ○ gcp-worker       offline
+
+ RUNS
+ running     ./simulate --seed {i}              247/1000 items   18m 12s  21:28
+ completed   make -j4                                3/3 jobs    5m 03s  20:55
+ failed      ./deploy.sh                             1/2 jobs      10.0s  20:41
+ interrupted pytest tests/                            4/9 items   1m 20s  19:02
+
+ [q]uit  [j/k] move  [enter] open  [h]ealth check  [r]efresh
+</code></pre>
+<h2>Reading it</h2>
+<p><strong>Nodes</strong> come from <code>cluster.toml</code>, and the bars from the last health check.
+Press <strong>h</strong> to run one now — it is the same check <code>shard cluster health</code> does,
+and the web dashboard shows the result too.</p>
+<p><strong>Runs</strong> are every run in the log directory, newest first. A run started in
+another terminal appears here within a second.</p>
+<p>A run marked <code>interrupted</code> said it was running, but the process that started
+it is gone — a closed terminal, a laptop that slept. shard asks the operating
+system rather than believing the file.</p>
+<h2>Looking inside a run</h2>
+<p>Move with <strong>j</strong> and <strong>k</strong> (or the arrow keys) and press <strong>Enter</strong>:</p>
+<pre><code> 20260822-212811-4021  running  ./simulate --seed {i}   247/1000 items · 18m 12s
+ ▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░ 24%
+
+ laptop#1                 running      18m 10s
+ laptop#2                 running      18m 10s
+ old-desktop#1            running      18m 09s
+ ec2-worker#1             completed     2m 41s
+
+ seed 612 done in 4.1s
+ seed 613 done in 3.9s
+ …
+
+ [esc] back  [n/p] job  [j/k] scroll log  [g/G] top/end  [q]uit
+</code></pre>
+<p>The log at the bottom belongs to the highlighted machine and keeps up with the
+run as it goes. <strong>n</strong> and <strong>p</strong> move between machines, <strong>j</strong> and <strong>k</strong> scroll
+back through the output, <strong>G</strong> returns to the end, and <strong>Esc</strong> goes back to
+the list.</p>
+<h2>Keys</h2>
+<table>
+  <tr><th>Key</th><th>In the list</th><th>Inside a run</th></tr>
+  <tr><td><code>j</code> / <code>k</code>, arrows</td><td>move between runs</td><td>scroll the log</td></tr>
+  <tr><td><code>Enter</code></td><td>open the run</td><td>—</td></tr>
+  <tr><td><code>Esc</code></td><td>—</td><td>back to the list</td></tr>
+  <tr><td><code>n</code> / <code>p</code></td><td>—</td><td>next / previous machine</td></tr>
+  <tr><td><code>g</code> / <code>G</code></td><td>—</td><td>start / end of the log</td></tr>
+  <tr><td><code>h</code></td><td>run a health check</td><td>—</td></tr>
+  <tr><td><code>r</code></td><td>reload now</td><td>—</td></tr>
+  <tr><td><code>q</code></td><td>quit</td><td>quit</td></tr>
+</table>
+<h2>It only reads</h2>
+<p>Like the web dashboard, it cannot start work — it shows what is happening and
+what has happened. The one thing it changes is the health check, which is a
+read too.</p>
+<h2>If it will not start</h2>
+<pre><code>shard: shard tui needs a terminal. For a browser, run: shard ui
+</code></pre>
+<p>That is what you get when the output is a pipe or a file rather than a
+terminal — in a cron job or a CI log, for instance. <code>shard status</code> and
+<code>shard history</code> are the plain-text versions.</p>
+
+            </article>
+            <nav class="post-nav">
+                <a class="prev" href="/shard/guide/web-dashboard/">The web dashboard</a>
+                <a class="next" href="/shard/examples/">Example workloads</a>
+            </nav>
+            <a class="edit" href="">Edit this page</a>
+        </main>
+    </div>
+    <script>
+    (function () {
+        var here = location.pathname;
+        document.querySelectorAll('.sidebar > ul a').forEach(function (a) {
+            if (a.getAttribute('href') === here) a.classList.add('active');
+        });
+
+        var root = document.documentElement;
+        var button = document.querySelector('.theme-toggle');
+        if (button) button.addEventListener('click', function () {
+            /* No stored choice yet means we are following the system. */
+            var now = root.getAttribute('data-theme') ||
+                (matchMedia('(prefers-color-scheme: dark)').matches
+                    ? 'dark' : 'light');
+            var next = now === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    })();
+    </script>
+</body>
+</html>
